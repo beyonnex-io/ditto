@@ -18,6 +18,7 @@ import java.net.URL;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
@@ -31,7 +32,9 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
+import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
 import org.eclipse.ditto.base.model.signals.FeatureToggle;
+import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonPointer;
 import org.eclipse.ditto.json.JsonValue;
 import org.eclipse.ditto.things.model.Attributes;
@@ -50,6 +53,7 @@ import org.eclipse.ditto.wot.validation.ValidationContext;
 import org.eclipse.ditto.wot.validation.WotThingModelPayloadValidationException;
 import org.eclipse.ditto.wot.validation.WotThingModelValidation;
 import org.eclipse.ditto.wot.validation.config.TmValidationConfig;
+import org.eclipse.ditto.wot.validation.config.WotValidationConfigMerger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -65,13 +69,17 @@ final class DefaultWotThingModelValidator implements WotThingModelValidator {
     private final WotConfig wotConfig;
     private final WotThingModelResolver thingModelResolver;
     private final Executor executor;
+    private final WotValidationConfigMerger configMerger;
 
     DefaultWotThingModelValidator(final WotConfig wotConfig,
             final WotThingModelResolver thingModelResolver,
-            final Executor executor) {
+            final Executor executor,
+            final TmValidationConfig staticConfig,
+            final Set<TmValidationConfig> dynamicConfigs) {
         this.wotConfig = wotConfig;
         this.thingModelResolver = thingModelResolver;
         this.executor = executor;
+        this.configMerger = WotValidationConfigMerger.of(staticConfig, dynamicConfigs);
     }
 
     @Override
@@ -93,9 +101,8 @@ final class DefaultWotThingModelValidator implements WotThingModelValidator {
         final ValidationContext context = buildValidationContext(dittoHeaders, thingDefinition);
         return provideValidationConfigIfWotValidationEnabled(context)
                 .map(validationConfig -> fetchResolveAndValidateWith(thingDefinition, dittoHeaders, thingModel ->
-                        doValidateThing(Optional.ofNullable(thingDefinition).orElseThrow(),
-                                thingModel, thing, context, validationConfig
-                        ).handle(applyLogingErrorOnlyStrategy(validationConfig, context, "validateThing"))
+                        doValidateThing(thingDefinition, thingModel, thing, resourcePath, context, validationConfig)
+                                .handle(applyLogingErrorOnlyStrategy(validationConfig, context, "validateThing"))
                 ))
                 .orElseGet(DefaultWotThingModelValidator::success);
     }
@@ -110,7 +117,7 @@ final class DefaultWotThingModelValidator implements WotThingModelValidator {
         final ValidationContext context = buildValidationContext(dittoHeaders, thingDefinition);
         return provideValidationConfigIfWotValidationEnabled(context)
                 .map(validationConfig ->
-                        doValidateThing(thingDefinition, thingModel, thing, context, validationConfig)
+                        doValidateThing(thingDefinition, thingModel, thing, resourcePath, context, validationConfig)
                                 .handle(applyLogingErrorOnlyStrategy(validationConfig, context, "validateThing"))
                 )
                 .orElseGet(DefaultWotThingModelValidator::success);
@@ -127,7 +134,7 @@ final class DefaultWotThingModelValidator implements WotThingModelValidator {
                         validationConfig.getThingValidationConfig().isEnforceThingDescriptionModification()
                 )
                 .map(validationConfig -> fetchResolveAndValidateWith(thingDefinition, dittoHeaders, thingModel ->
-                        doValidateThing(thingDefinition, thingModel, thing, context, validationConfig)
+                        doValidateThing(thingDefinition, thingModel, thing, JsonPointer.empty(), context, validationConfig)
                                 .handle(applyLogingErrorOnlyStrategy(validationConfig, context, "validateThingDefinitionModification"))
                 ))
                 .orElseGet(DefaultWotThingModelValidator::success);
@@ -647,34 +654,22 @@ final class DefaultWotThingModelValidator implements WotThingModelValidator {
     private CompletionStage<Void> doValidateThing(final ThingDefinition thingDefinition,
             final ThingModel thingModel,
             final Thing thing,
+            final JsonPointer resourcePath,
             final ValidationContext context,
             final TmValidationConfig validationConfig
     ) {
-        final CompletionStage<Void> firstStage;
-        if (validationConfig.getThingValidationConfig().isForbidThingDescriptionDeletion() &&
-                thing.getDefinition().isEmpty()) {
-            firstStage = validateThingDefinitionDeletion(thingDefinition, context.dittoHeaders());
-        } else {
-            firstStage = success();
-        }
-        return firstStage.thenCompose(unused ->
-                doValidateThingAttributes(thingModel,
-                        thing.getAttributes().orElse(null),
-                        Thing.JsonFields.ATTRIBUTES.getPointer(),
-                        context,
-                        validationConfig
-                )
-        ).thenCompose(aVoid ->
-                thingModelResolver.resolveThingModelSubmodels(thingModel, context.dittoHeaders())
-                        .thenCompose(subModels ->
-                                doValidateFeatures(subModels,
-                                        thing.getFeatures().orElse(null),
-                                        JsonPointer.empty(),
-                                        context,
-                                        validationConfig
-                                )
-                        )
-        );
+        final WotThingModelValidation validation = selectValidation(validationConfig);
+        return validation.validateThingAttributes(thingModel, thing.getAttributes().orElse(null), resourcePath, context)
+                .thenCompose(ignored -> {
+                    final Map<String, ThingModel> featureThingModels = buildFeatureThingModels(thingModel);
+                    return validation.validateFeaturesPresence(featureThingModels, thing.getFeatures().orElse(null), context)
+                            .thenCompose(ignored2 -> validation.validateFeaturesProperties(featureThingModels, thing.getFeatures().orElse(null), resourcePath, context));
+                });
+    }
+
+    private Map<String, ThingModel> buildFeatureThingModels(final ThingModel thingModel) {
+        // TODO: Implement the logic to build feature thing models from the thing model
+        return Map.of();
     }
 
     private CompletionStage<Void> doValidateThingAttributes(final ThingModel thingModel,
@@ -848,5 +843,26 @@ final class DefaultWotThingModelValidator implements WotThingModelValidator {
                         LinkedHashMap::new
                 )
         );
+    }
+
+    private CompletionStage<Void> validateFeaturesPresence(final ThingModel thingModel,
+            @Nullable final Features features,
+            final ValidationContext context) {
+        if (features != null) {
+            return selectValidation(configMerger.merge(context))
+                    .validateFeaturesPresence(Map.of(), features, context);
+        }
+        return success();
+    }
+
+    private CompletionStage<Void> validateFeaturesProperties(final ThingModel thingModel,
+            @Nullable final Features features,
+            final JsonPointer resourcePath,
+            final ValidationContext context) {
+        if (features != null) {
+            return selectValidation(configMerger.merge(context))
+                    .validateFeaturesProperties(Map.of(), features, resourcePath, context);
+        }
+        return success();
     }
 }

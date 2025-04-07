@@ -26,10 +26,18 @@ import org.apache.pekko.http.javadsl.server.RequestContext;
 import org.apache.pekko.http.javadsl.server.Route;
 import org.eclipse.ditto.base.api.common.RetrieveConfig;
 import org.eclipse.ditto.base.api.devops.ImmutableLoggerConfig;
+import org.eclipse.ditto.base.api.devops.LoggerConfig;
+import org.eclipse.ditto.base.api.devops.LoggingFacade;
+import org.eclipse.ditto.base.api.devops.signals.commands.AggregatedDevOpsCommandResponse;
 import org.eclipse.ditto.base.api.devops.signals.commands.ChangeLogLevel;
+import org.eclipse.ditto.base.api.devops.signals.commands.ChangeLogLevelResponse;
 import org.eclipse.ditto.base.api.devops.signals.commands.DevOpsCommand;
+import org.eclipse.ditto.base.api.devops.signals.commands.DevOpsCommandResponse;
+import org.eclipse.ditto.base.api.devops.signals.commands.DevOpsErrorResponse;
 import org.eclipse.ditto.base.api.devops.signals.commands.ExecutePiggybackCommand;
+import org.eclipse.ditto.base.api.devops.signals.commands.ExecutePiggybackCommandResponse;
 import org.eclipse.ditto.base.api.devops.signals.commands.RetrieveLoggerConfig;
+import org.eclipse.ditto.base.api.devops.signals.commands.RetrieveLoggerConfigResponse;
 import org.eclipse.ditto.base.model.common.ConditionChecker;
 import org.eclipse.ditto.base.model.exceptions.DittoJsonException;
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
@@ -45,6 +53,14 @@ import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonPointer;
 import org.eclipse.ditto.json.JsonValue;
+import org.eclipse.ditto.things.model.devops.ImmutableWoTValidationConfig;
+import org.eclipse.ditto.things.model.devops.commands.DeleteWotValidationConfig;
+import org.eclipse.ditto.things.model.devops.commands.ModifyWotValidationConfig;
+import org.eclipse.ditto.things.model.devops.commands.RetrieveMergedWotValidationConfig;
+import org.eclipse.ditto.things.model.devops.commands.RetrieveWotValidationConfig;
+import org.eclipse.ditto.things.model.ThingId;
+import org.eclipse.ditto.things.model.ValidationContext;
+import org.eclipse.ditto.wot.validation.DefaultValidationContext;
 
 /**
  * Builder for creating Pekko HTTP routes for {@code /devops}.
@@ -65,7 +81,8 @@ public final class DevOpsRoute extends AbstractRoute {
     private static final String PATH_LOGGING = "logging";
     private static final String PATH_PIGGYBACK = "piggyback";
     private static final String PATH_CONFIG = "config";
-
+    private static final String PATH_WOT = "wot";
+    private static final String PATH_VALIDATION_CONFIGS = "validationConfigs";
     /**
      * Path parameter for retrieving config.
      */
@@ -118,7 +135,67 @@ public final class DevOpsRoute extends AbstractRoute {
                                 ),
                                 rawPathPrefix(PathMatchers.slash().concat(PATH_CONFIG),
                                         () -> // /devops/config
-                                                config(ctx, createHeaders(queryParameters)))
+                                                config(ctx, createHeaders(queryParameters))
+                                ),
+                                rawPathPrefix(PathMatchers.slash().concat(PATH_WOT),
+                                        () -> // /wot/validationConfigs
+                                                wotRoutes(ctx, createHeaders(queryParameters))
+                                )
+                        )
+                )
+        );
+    }
+
+    /**
+     * @return {@code /devops/wot/validationConfigs} route.
+     */
+    private Route wotRoutes(final RequestContext ctx, final DittoHeaders dittoHeaders) {
+        return rawPathPrefix(PathMatchers.slash().concat(PATH_VALIDATION_CONFIGS), () ->
+                concat(
+                        pathEndOrSingleSlash(() -> 
+                            get(() -> {
+                                // Route through DevOpsCommandsActor
+                                return handlePerRequest(ctx,
+                                        ExecutePiggybackCommand.of(null,
+                                                null,
+                                                DEVOPS_COMMANDS_ACTOR_SELECTION,
+                                                RetrieveMergedWotValidationConfig.of(
+                                                        ThingId.of("_"), // Use a wildcard thing ID for global config
+                                                        ValidationContext.fromJson(JsonFactory.newObject()),
+                                                        dittoHeaders).toJson(),
+                                                dittoHeaders));
+                            })
+                        ),
+                        pathPrefix(PathMatchers.segment(), scopeId ->
+                                concat(
+                                        get(() -> {
+                                            return handlePerRequest(ctx,
+                                                    ExecutePiggybackCommand.of(null,
+                                                            null,
+                                                            DEVOPS_COMMANDS_ACTOR_SELECTION,
+                                                            RetrieveWotValidationConfig.of(ThingId.of(scopeId), dittoHeaders).toJson(),
+                                                            dittoHeaders));
+                                        }),
+                                        put(() -> extractDataBytes(payloadSource ->
+                                                handlePerRequest(ctx, dittoHeaders, payloadSource,
+                                                        json -> ExecutePiggybackCommand.of(null,
+                                                                null,
+                                                                DEVOPS_COMMANDS_ACTOR_SELECTION,
+                                                                ModifyWotValidationConfig.of(ThingId.of(scopeId),
+                                                                        ImmutableWoTValidationConfig.fromJson(JsonFactory.readFrom(json).asObject()).toJson(),
+                                                                        dittoHeaders).toJson(),
+                                                                dittoHeaders)
+                                                )
+                                        )),
+                                        delete(() -> {
+                                            return handlePerRequest(ctx,
+                                                    ExecutePiggybackCommand.of(null,
+                                                            null,
+                                                            DEVOPS_COMMANDS_ACTOR_SELECTION,
+                                                            DeleteWotValidationConfig.of(ThingId.of(scopeId), dittoHeaders).toJson(),
+                                                            dittoHeaders));
+                                        })
+                                )
                         )
                 )
         );
@@ -304,6 +381,20 @@ public final class DevOpsRoute extends AbstractRoute {
 
         Route build(RequestContext ctx, String serviceName, String instance, DittoHeaders dittoHeaders);
 
+    }
+
+    /**
+     * Handle a command that extends Command interface but isn't being recognized by the compiler
+     */
+    private Route handleDevOpsCommand(final RequestContext ctx, final Object command) {
+        // Debug information to understand what type is coming through
+        System.out.println("Command class: " + command.getClass().getName());
+        
+        if (command instanceof Command<?>) {
+            return handlePerRequest(ctx, (Command<?>) command);
+        } else {
+            throw new IllegalArgumentException("Not a valid Command: " + command.getClass().getName());
+        }
     }
 
 }

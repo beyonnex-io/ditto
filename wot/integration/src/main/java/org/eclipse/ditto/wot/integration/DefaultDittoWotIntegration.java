@@ -14,6 +14,7 @@ package org.eclipse.ditto.wot.integration;
 
 import static org.eclipse.ditto.base.model.common.ConditionChecker.checkNotNull;
 
+import java.util.Set;
 import java.util.concurrent.Executor;
 
 import javax.annotation.concurrent.Immutable;
@@ -32,6 +33,7 @@ import org.eclipse.ditto.wot.api.generator.WotThingSkeletonGenerator;
 import org.eclipse.ditto.wot.api.provider.WotThingModelFetcher;
 import org.eclipse.ditto.wot.api.resolver.WotThingModelResolver;
 import org.eclipse.ditto.wot.api.validator.WotThingModelValidator;
+import org.eclipse.ditto.wot.validation.config.TmValidationConfig;
 
 /**
  * Default Ditto specific implementation of {@link DittoWotIntegration} and Pekko extension.
@@ -64,7 +66,8 @@ final class DefaultDittoWotIntegration implements DittoWotIntegration {
                 WotThingModelResolver.of(wotConfig, thingModelFetcher, thingModelExtensionResolver, cacheLoaderExecutor);
         thingDescriptionGenerator = WotThingDescriptionGenerator.of(wotConfig, thingModelResolver, executor);
         thingSkeletonGenerator = WotThingSkeletonGenerator.of(wotConfig, thingModelResolver, executor);
-        thingModelValidator = WotThingModelValidator.of(wotConfig, thingModelResolver, executor);
+        thingModelValidator = WotThingModelValidator.of(wotConfig, thingModelResolver, executor, 
+                wotConfig.getValidationConfig(), Set.of());
     }
 
     /**

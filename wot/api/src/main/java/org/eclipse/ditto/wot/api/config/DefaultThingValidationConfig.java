@@ -18,6 +18,7 @@ import javax.annotation.concurrent.Immutable;
 
 import org.eclipse.ditto.internal.utils.config.ConfigWithFallback;
 import org.eclipse.ditto.internal.utils.config.ScopedConfig;
+import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.wot.validation.config.ThingValidationConfig;
 
 import com.typesafe.config.Config;
@@ -116,6 +117,21 @@ final class DefaultThingValidationConfig implements ThingValidationConfig {
     @Override
     public boolean isForbidNonModeledOutboxMessages() {
         return forbidNonModeledOutboxMessages;
+    }
+
+    @Override
+    public JsonObject toJson() {
+        return JsonObject.newBuilder()
+                .set(JsonFields.ENFORCE_THING_DESCRIPTION_MODIFICATION, enforceThingDescriptionModification)
+                .set(JsonFields.ENFORCE_ATTRIBUTES, enforceAttributes)
+                .set(JsonFields.ENFORCE_INBOX_MESSAGES_INPUT, enforceInboxMessagesInput)
+                .set(JsonFields.ENFORCE_INBOX_MESSAGES_OUTPUT, enforceInboxMessagesOutput)
+                .set(JsonFields.ENFORCE_OUTBOX_MESSAGES, enforceOutboxMessages)
+                .set(JsonFields.FORBID_THING_DESCRIPTION_DELETION, forbidThingDescriptionDeletion)
+                .set(JsonFields.FORBID_NON_MODELED_ATTRIBUTES, forbidNonModeledAttributes)
+                .set(JsonFields.FORBID_NON_MODELED_INBOX_MESSAGES, forbidNonModeledInboxMessages)
+                .set(JsonFields.FORBID_NON_MODELED_OUTBOX_MESSAGES, forbidNonModeledOutboxMessages)
+                .build();
     }
 
     @Override

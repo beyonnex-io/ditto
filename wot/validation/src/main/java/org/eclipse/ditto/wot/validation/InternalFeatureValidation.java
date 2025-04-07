@@ -72,7 +72,7 @@ final class InternalFeatureValidation {
                     .newBuilder("Attempting to update the Thing with feature(s) which were not " +
                             "defined in the model: " + extraFeatureIds);
             return CompletableFuture.failedFuture(exceptionBuilder
-                    .dittoHeaders(context.dittoHeaders())
+                    .dittoHeaders(context.getDittoHeaders())
                     .build());
         }
         return success();
@@ -95,7 +95,7 @@ final class InternalFeatureValidation {
                     .newBuilder("Attempting to update the Thing with missing in the model " +
                             "defined features: " + missingFeatureIds);
             return CompletableFuture.failedFuture(exceptionBuilder
-                    .dittoHeaders(context.dittoHeaders())
+                    .dittoHeaders(context.getDittoHeaders())
                     .build());
         }
         return success();
@@ -309,7 +309,7 @@ final class InternalFeatureValidation {
                                 .newBuilder("Could not update Feature property category " +
                                         "<" + dittoCategory + "> as its value was not a JSON object");
                 return CompletableFuture.failedFuture(exceptionBuilder
-                        .dittoHeaders(context.dittoHeaders())
+                        .dittoHeaders(context.getDittoHeaders())
                         .build());
             }
 
@@ -423,7 +423,7 @@ final class InternalFeatureValidation {
                                 .newBuilder("Could not delete Feature <" + featureId + "> properties " +
                                         "category <" + potentialCategory + "> as it contains non-optional properties");
                 return CompletableFuture.failedFuture(exceptionBuilder
-                        .dittoHeaders(context.dittoHeaders())
+                        .dittoHeaders(context.getDittoHeaders())
                         .build());
             }
         }
@@ -509,7 +509,7 @@ final class InternalFeatureValidation {
                     )
             );
             return CompletableFuture
-                    .failedFuture(exceptionBuilder.dittoHeaders(context.dittoHeaders()).build());
+                    .failedFuture(exceptionBuilder.dittoHeaders(context.getDittoHeaders()).build());
         }
 
         return validateProperties(

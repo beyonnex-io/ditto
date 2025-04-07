@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Contributors to the Eclipse Foundation
+ * Copyright (c) 2025 Contributors to the Eclipse Foundation
  *
  * See the NOTICE file(s) distributed with this work for additional
  * information regarding copyright ownership.
@@ -12,51 +12,138 @@
  */
 package org.eclipse.ditto.wot.validation;
 
-import java.util.Optional;
-
-import javax.annotation.Nullable;
-
-import org.eclipse.ditto.base.model.headers.DittoHeaderDefinition;
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
-import org.eclipse.ditto.things.model.FeatureDefinition;
+import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.things.model.ThingDefinition;
 import org.eclipse.ditto.things.model.ThingId;
+import org.eclipse.ditto.things.model.FeatureDefinition;
 
 /**
- * A validation context provides the context of an API call which can be used to dynamically determine custom
- * configuration overrides, e.g. based on specific {@link DittoHeaders} or specific thing or feature definitions.
- *
- * @param dittoHeaders the DittoHeaders of the API call
- * @param thingDefinition the optional ThingDefinition of the thing to be updated by the API call
- * @param featureDefinition the optional FeatureDefinition of the thing to be updated by the API call
- * @param thingId the ThingId of the validated Thing
+ * Interface for WoT validation context.
  */
-public record ValidationContext(
-        DittoHeaders dittoHeaders,
-        @Nullable ThingDefinition thingDefinition,
-        @Nullable FeatureDefinition featureDefinition,
-        @Nullable ThingId thingId
-) {
+public interface ValidationContext {
 
-    public static ValidationContext buildValidationContext(final DittoHeaders dittoHeaders,
-            @Nullable final ThingDefinition thingDefinition,
-            @Nullable final FeatureDefinition featureDefinition
-    ) {
-        return new ValidationContext(dittoHeaders, thingDefinition, featureDefinition,
-                extractThingId(dittoHeaders).orElse(null));
+    /**
+     * Returns the thing ID.
+     *
+     * @return the thing ID.
+     */
+    ThingId getThingId();
+
+    /**
+     * Returns the thing definition.
+     *
+     * @return the thing definition.
+     */
+    ThingDefinition getThingDefinition();
+
+    /**
+     * Returns the feature definition.
+     *
+     * @return the feature definition.
+     */
+    FeatureDefinition getFeatureDefinition();
+
+    /**
+     * Returns the Ditto headers.
+     *
+     * @return the Ditto headers.
+     */
+    DittoHeaders getDittoHeaders();
+
+    /**
+     * Returns the validation context as a JSON object.
+     *
+     * @return the validation context.
+     */
+    JsonObject toJson();
+
+    /**
+     * Creates a new validation context from a JSON object.
+     *
+     * @param jsonObject the JSON object.
+     * @param dittoHeaders the Ditto headers.
+     * @return the validation context.
+     */
+    static ValidationContext fromJson(final JsonObject jsonObject, final DittoHeaders dittoHeaders) {
+        return ImmutableValidationContext.fromJson(jsonObject, dittoHeaders);
     }
 
-    public static ValidationContext buildValidationContext(final DittoHeaders dittoHeaders,
-            @Nullable final ThingDefinition thingDefinition
-    ) {
-        return new ValidationContext(dittoHeaders, thingDefinition, null,
-                extractThingId(dittoHeaders).orElse(null));
+    /**
+     * Creates a new validation context with the given parameters.
+     *
+     * @param dittoHeaders the headers.
+     * @param thingDefinition the thing definition.
+     * @param featureDefinition the feature definition.
+     * @return the validation context.
+     */
+    static ValidationContext buildValidationContext(final DittoHeaders dittoHeaders,
+            final ThingDefinition thingDefinition,
+            final FeatureDefinition featureDefinition) {
+        return ImmutableValidationContext.of(null, thingDefinition, featureDefinition, dittoHeaders);
     }
 
-    private static Optional<ThingId> extractThingId(final DittoHeaders dittoHeaders) {
-        final String nullableEntityId = dittoHeaders.get(DittoHeaderDefinition.ENTITY_ID.getKey());
-        return Optional.ofNullable(nullableEntityId)
-                .map(entityId -> entityId.substring(entityId.indexOf(":") + 1)) // starts with "thing:" - cut that off!
-                .map(ThingId::of);
+    /**
+     * Creates a new validation context with the given parameters.
+     *
+     * @param dittoHeaders the headers.
+     * @param thingDefinition the thing definition.
+     * @return the validation context.
+     */
+    static ValidationContext buildValidationContext(final DittoHeaders dittoHeaders,
+            final ThingDefinition thingDefinition) {
+        return ImmutableValidationContext.of(null, thingDefinition, null, dittoHeaders);
     }
-}
+
+    /**
+     * Creates a new validation context with the given parameters.
+     *
+     * @param dittoHeaders the headers.
+     * @param thingDefinition the thing definition.
+     * @param featureDefinition the feature definition.
+     * @param thingId the thing ID.
+     * @return the validation context.
+     */
+    static ValidationContext buildValidationContext(final DittoHeaders dittoHeaders,
+            final ThingDefinition thingDefinition,
+            final FeatureDefinition featureDefinition,
+            final ThingId thingId) {
+        return ImmutableValidationContext.of(thingId, thingDefinition, featureDefinition, dittoHeaders);
+    }
+
+    /**
+     * Returns the thing ID.
+     *
+     * @return the thing ID.
+     */
+    default ThingId thingId() {
+        return getThingId();
+    }
+
+    /**
+     * Returns the thing definition.
+     *
+     * @return the thing definition.
+     */
+    default ThingDefinition thingDefinition() {
+        return getThingDefinition();
+    }
+
+    /**
+     * Returns the feature definition.
+     *
+     * @return the feature definition.
+     */
+    default FeatureDefinition featureDefinition() {
+        return getFeatureDefinition();
+    }
+
+    /**
+     * Returns the Ditto headers.
+     *
+     * @return the Ditto headers.
+     */
+    default DittoHeaders dittoHeaders() {
+        return getDittoHeaders();
+    }
+} 

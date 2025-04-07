@@ -53,6 +53,7 @@ import org.eclipse.ditto.things.model.signals.events.ThingEvent;
 import org.eclipse.ditto.things.model.signals.events.ThingMerged;
 import org.eclipse.ditto.things.model.signals.events.ThingDefinitionMigrated;
 import org.eclipse.ditto.things.model.signals.events.ThingModified;
+import org.eclipse.ditto.things.model.signals.events.WotValidationConfigCreated;
 
 /**
  * This Singleton strategy handles all {@link ThingEvent}s.
@@ -88,6 +89,7 @@ public final class ThingEventStrategies extends AbstractEventStrategies<ThingEve
         addStrategy(ThingDeleted.class, new ThingDeletedStrategy());
         addStrategy(ThingMerged.class, new ThingMergedStrategy());
         addStrategy(ThingDefinitionMigrated.class, new ThingDefinitionMigratedStrategy());
+        addStrategy(WotValidationConfigCreated.class, new WotValidationConfigCreatedStrategy());
     }
 
     private void addAttributesStrategies() {

@@ -16,6 +16,7 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
 import org.eclipse.ditto.internal.utils.config.KnownConfigValue;
+import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.wot.validation.ValidationContext;
 
 /**
@@ -26,6 +27,11 @@ import org.eclipse.ditto.wot.validation.ValidationContext;
  */
 @Immutable
 public interface TmValidationConfig {
+
+    /**
+     * @return the ID of this validation config.
+     */
+    String getId();
 
     /**
      * @return whether the ThingModel validation of Things/Features should be enabled or not.
@@ -55,6 +61,11 @@ public interface TmValidationConfig {
      * @return an API call specific instance of the validation config.
      */
     TmValidationConfig withValidationContext(@Nullable ValidationContext context);
+
+    /**
+     * @return a JSON representation of this config.
+     */
+    JsonObject toJson();
 
     /**
      * An enumeration of the known config path expressions and their associated default values for

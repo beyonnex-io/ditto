@@ -18,9 +18,13 @@ import java.util.Objects;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
+import org.eclipse.ditto.base.model.json.Jsonifiable;
 import org.eclipse.ditto.internal.utils.config.ConfigWithFallback;
 import org.eclipse.ditto.internal.utils.config.DefaultScopedConfig;
+import org.eclipse.ditto.internal.utils.config.KnownConfigValue;
 import org.eclipse.ditto.internal.utils.config.ScopedConfig;
+import org.eclipse.ditto.json.JsonObject;
+import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.wot.validation.ValidationContext;
 import org.eclipse.ditto.wot.validation.config.FeatureValidationConfig;
 import org.eclipse.ditto.wot.validation.config.ThingValidationConfig;
@@ -41,12 +45,12 @@ final class DefaultTmValidationConfig implements TmValidationConfig {
 
     private final ScopedConfig scopedConfig;
     private final List<InternalDynamicTmValidationConfiguration> dynamicTmValidationConfigurations;
+    private final String id;
 
     private final boolean enabled;
     private final boolean logWarningInsteadOfFailingApiCalls;
     private final ThingValidationConfig thingValidationConfig;
     private final FeatureValidationConfig featureValidationConfig;
-
 
     private DefaultTmValidationConfig(final ScopedConfig scopedConfig,
             final List<InternalDynamicTmValidationConfiguration> dynamicTmValidationConfigurations,
@@ -54,13 +58,14 @@ final class DefaultTmValidationConfig implements TmValidationConfig {
     ) {
         this.scopedConfig = scopedConfig;
         this.dynamicTmValidationConfigurations = dynamicTmValidationConfigurations;
+        this.id = "default";
 
         final Config effectiveConfig = dynamicTmValidationConfigurations.stream()
                 .flatMap(dynamicConfig -> dynamicConfig.calculateDynamicTmValidationConfigOverrides(context).stream())
                 .reduce(ConfigFactory.empty(), (a, b) -> b.withFallback(a))
                 .withFallback(scopedConfig.resolve());
-        enabled = effectiveConfig.getBoolean(ConfigValue.ENABLED.getConfigPath());
-        logWarningInsteadOfFailingApiCalls = effectiveConfig.getBoolean(ConfigValue.LOG_WARNING_INSTEAD_OF_FAILING_API_CALLS.getConfigPath());
+        enabled = effectiveConfig.getBoolean("enabled");
+        logWarningInsteadOfFailingApiCalls = effectiveConfig.getBoolean("log-warning-instead-of-failing-api-calls");
 
         thingValidationConfig = DefaultThingValidationConfig.of(effectiveConfig);
         featureValidationConfig = DefaultFeatureValidationConfig.of(effectiveConfig);
@@ -80,8 +85,12 @@ final class DefaultTmValidationConfig implements TmValidationConfig {
                         .stream()
                         .map(InternalDynamicTmValidationConfiguration::new)
                         .toList();
-        return new DefaultTmValidationConfig(ConfigWithFallback.newInstance(config, CONFIG_PATH,
-                ConfigValue.values()), dynamicTmValidationConfigurations, null);
+        return new DefaultTmValidationConfig(ConfigWithFallback.newInstance(config, CONFIG_PATH, ConfigValue.values()), dynamicTmValidationConfigurations, null);
+    }
+
+    @Override
+    public String getId() {
+        return id;
     }
 
     @Override
@@ -102,6 +111,46 @@ final class DefaultTmValidationConfig implements TmValidationConfig {
     @Override
     public FeatureValidationConfig getFeatureValidationConfig() {
         return featureValidationConfig;
+    }
+
+    @Override
+    public JsonObject toJson() {
+        final JsonObjectBuilder jsonObjectBuilder = JsonObject.newBuilder();
+        jsonObjectBuilder.set("id", id);
+        jsonObjectBuilder.set("enabled", enabled);
+        jsonObjectBuilder.set("logWarningInsteadOfFailingApiCalls", logWarningInsteadOfFailingApiCalls);
+        
+        // Add thing validation config fields
+        final JsonObjectBuilder thingConfigBuilder = JsonObject.newBuilder();
+        thingConfigBuilder.set("enforceThingDescriptionModification", thingValidationConfig.isEnforceThingDescriptionModification());
+        thingConfigBuilder.set("enforceAttributes", thingValidationConfig.isEnforceAttributes());
+        thingConfigBuilder.set("enforceInboxMessagesInput", thingValidationConfig.isEnforceInboxMessagesInput());
+        thingConfigBuilder.set("enforceInboxMessagesOutput", thingValidationConfig.isEnforceInboxMessagesOutput());
+        thingConfigBuilder.set("enforceOutboxMessages", thingValidationConfig.isEnforceOutboxMessages());
+        thingConfigBuilder.set("forbidThingDescriptionDeletion", thingValidationConfig.isForbidThingDescriptionDeletion());
+        thingConfigBuilder.set("forbidNonModeledAttributes", thingValidationConfig.isForbidNonModeledAttributes());
+        thingConfigBuilder.set("forbidNonModeledInboxMessages", thingValidationConfig.isForbidNonModeledInboxMessages());
+        thingConfigBuilder.set("forbidNonModeledOutboxMessages", thingValidationConfig.isForbidNonModeledOutboxMessages());
+        jsonObjectBuilder.set("thingValidationConfig", thingConfigBuilder.build());
+        
+        // Add feature validation config fields
+        final JsonObjectBuilder featureConfigBuilder = JsonObject.newBuilder();
+        featureConfigBuilder.set("enforceFeatureDescriptionModification", featureValidationConfig.isEnforceFeatureDescriptionModification());
+        featureConfigBuilder.set("enforcePresenceOfModeledFeatures", featureValidationConfig.isEnforcePresenceOfModeledFeatures());
+        featureConfigBuilder.set("enforceProperties", featureValidationConfig.isEnforceProperties());
+        featureConfigBuilder.set("enforceDesiredProperties", featureValidationConfig.isEnforceDesiredProperties());
+        featureConfigBuilder.set("enforceInboxMessagesInput", featureValidationConfig.isEnforceInboxMessagesInput());
+        featureConfigBuilder.set("enforceInboxMessagesOutput", featureValidationConfig.isEnforceInboxMessagesOutput());
+        featureConfigBuilder.set("enforceOutboxMessages", featureValidationConfig.isEnforceOutboxMessages());
+        featureConfigBuilder.set("forbidFeatureDescriptionDeletion", featureValidationConfig.isForbidFeatureDescriptionDeletion());
+        featureConfigBuilder.set("forbidNonModeledFeatures", featureValidationConfig.isForbidNonModeledFeatures());
+        featureConfigBuilder.set("forbidNonModeledProperties", featureValidationConfig.isForbidNonModeledProperties());
+        featureConfigBuilder.set("forbidNonModeledDesiredProperties", featureValidationConfig.isForbidNonModeledDesiredProperties());
+        featureConfigBuilder.set("forbidNonModeledInboxMessages", featureValidationConfig.isForbidNonModeledInboxMessages());
+        featureConfigBuilder.set("forbidNonModeledOutboxMessages", featureValidationConfig.isForbidNonModeledOutboxMessages());
+        jsonObjectBuilder.set("featureValidationConfig", featureConfigBuilder.build());
+        
+        return jsonObjectBuilder.build();
     }
 
     @Override
@@ -146,5 +195,34 @@ final class DefaultTmValidationConfig implements TmValidationConfig {
                 ", featureValidationConfig=" + featureValidationConfig +
                 ", scopedConfig=" + scopedConfig +
                 "]";
+    }
+
+    /**
+     * An enumeration of the known config path expressions and their associated default values for
+     * {@code DefaultTmValidationConfig}.
+     */
+    enum ConfigValue implements KnownConfigValue {
+
+        ENABLED("enabled", true),
+
+        LOG_WARNING_INSTEAD_OF_FAILING_API_CALLS("log-warning-instead-of-failing-api-calls", false);
+
+        private final String path;
+        private final Object defaultValue;
+
+        ConfigValue(final String thePath, final Object theDefaultValue) {
+            path = thePath;
+            defaultValue = theDefaultValue;
+        }
+
+        @Override
+        public Object getDefaultValue() {
+            return defaultValue;
+        }
+
+        @Override
+        public String getConfigPath() {
+            return path;
+        }
     }
 }

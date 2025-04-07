@@ -24,6 +24,11 @@ import org.eclipse.ditto.things.model.Thing;
 import org.eclipse.ditto.things.model.ThingId;
 import org.eclipse.ditto.things.model.signals.commands.modify.CreateThing;
 import org.eclipse.ditto.things.model.signals.events.ThingEvent;
+import org.eclipse.ditto.things.service.common.config.DittoThingsConfig;
+import org.eclipse.ditto.internal.utils.config.DefaultScopedConfig;
+import org.eclipse.ditto.internal.utils.config.ScopedConfig;
+import org.eclipse.ditto.wot.api.config.DefaultWotConfig;
+import com.typesafe.config.Config;
 
 /**
  * The collection of the command strategies of {@code ThingPersistenceActor}.
@@ -82,12 +87,22 @@ public final class ThingCommandStrategies
     }
 
     private void addThingStrategies(final ActorSystem system) {
+        final var dittoScopedConfig = DefaultScopedConfig.dittoScoped(system.settings().config());
+        final var thingsConfig = DittoThingsConfig.of((ScopedConfig) dittoScopedConfig);
+        final var wotConfig = DefaultWotConfig.of((Config) dittoScopedConfig.getConfig(DefaultWotConfig.WOT_PARENT_CONFIG_PATH));
+        final var ddata = WotValidationConfigDData.of(system);
+
         addStrategy(new ThingConflictStrategy(system));
         addStrategy(new ModifyThingStrategy(system));
         addStrategy(new RetrieveThingStrategy(system));
         addStrategy(new DeleteThingStrategy(system));
         addStrategy(new MergeThingStrategy(system));
         addStrategy(new MigrateThingDefinitionStrategy(system));
+        addStrategy(new CreateWotValidationConfigStrategy(system));
+        addStrategy(new ModifyWotValidationConfigStrategy(thingsConfig, ddata, system));
+        addStrategy(new DeleteWotValidationConfigStrategy(thingsConfig, ddata, system));
+        addStrategy(new RetrieveWotValidationConfigStrategy(thingsConfig, ddata, system));
+        addStrategy(new RetrieveMergedWotValidationConfigStrategy(ddata, wotConfig, system));
     }
 
     private void addPolicyStrategies(final ActorSystem system) {

@@ -98,7 +98,7 @@ final class InternalValidation {
                     .newBuilder("The " + containerNamePlural + " contained " +
                             "JSON fields which were not defined in the model: " + allAvailablePropertiesKeys);
             return CompletableFuture.failedFuture(exceptionBuilder
-                    .dittoHeaders(context.dittoHeaders())
+                    .dittoHeaders(context.getDittoHeaders())
                     .build());
         }
         return success();
@@ -133,7 +133,7 @@ final class InternalValidation {
                         );
                     }
             );
-            return CompletableFuture.failedFuture(exceptionBuilder.dittoHeaders(context.dittoHeaders()).build());
+            return CompletableFuture.failedFuture(exceptionBuilder.dittoHeaders(context.getDittoHeaders()).build());
         }
         return success();
     }
@@ -160,7 +160,7 @@ final class InternalValidation {
                                 .newBuilder("Could not delete " + pluralDescription + ", " +
                                         "as there are some defined as non-optional in the model");
                 return CompletableFuture.failedFuture(exceptionBuilder
-                        .dittoHeaders(context.dittoHeaders())
+                        .dittoHeaders(context.getDittoHeaders())
                         .build());
             }
         } else {
@@ -200,7 +200,7 @@ final class InternalValidation {
                                 .newBuilder("Could not delete " + singularDescription + " <" + resourcePointer + "> " +
                                         "as it is defined as non-optional in the model");
                 return CompletableFuture.failedFuture(exceptionBuilder
-                        .dittoHeaders(context.dittoHeaders())
+                        .dittoHeaders(context.getDittoHeaders())
                         .build());
             }
         }
@@ -334,7 +334,7 @@ final class InternalValidation {
                             messageSubject + "> is not defined as known action in the model: " + allDefinedActionKeys
                     );
             return CompletableFuture.failedFuture(exceptionBuilder
-                    .dittoHeaders(context.dittoHeaders())
+                    .dittoHeaders(context.getDittoHeaders())
                     .build());
         }
         return success();
@@ -354,7 +354,7 @@ final class InternalValidation {
                             messageSubject + "> is not defined as known event in the model: " + allDefinedEventKeys
                     );
             return CompletableFuture.failedFuture(exceptionBuilder
-                    .dittoHeaders(context.dittoHeaders())
+                    .dittoHeaders(context.getDittoHeaders())
                     .build());
         }
         return success();
@@ -435,7 +435,7 @@ final class InternalValidation {
                 );
             });
             return CompletableFuture.failedFuture(exceptionBuilder
-                    .dittoHeaders(context.dittoHeaders())
+                    .dittoHeaders(context.getDittoHeaders())
                     .build());
         }
         return success();
@@ -456,7 +456,7 @@ final class InternalValidation {
                                                 JsonPointer.empty(),
                                                 validateRequiredObjectFields,
                                                 propertyValue,
-                                                context.dittoHeaders()
+                                                context.getDittoHeaders()
                                         )
                                 ))
                                 .filter(entry -> !entry.getValue().isValid())
@@ -611,7 +611,7 @@ final class InternalValidation {
                 pointerPath,
                 validateRequiredObjectFields,
                 jsonValue,
-                context.dittoHeaders()
+                context.getDittoHeaders()
         );
 
         if (!validationOutput.isValid()) {
@@ -625,7 +625,7 @@ final class InternalValidation {
                             .toList()
             );
             return CompletableFuture.failedFuture(exceptionBuilder
-                    .dittoHeaders(context.dittoHeaders())
+                    .dittoHeaders(context.getDittoHeaders())
                     .build());
         }
         return success();

@@ -15,9 +15,11 @@ package org.eclipse.ditto.wot.validation.config;
 import javax.annotation.concurrent.Immutable;
 
 import org.eclipse.ditto.internal.utils.config.KnownConfigValue;
+import org.eclipse.ditto.json.JsonFieldDefinition;
+import org.eclipse.ditto.json.JsonObject;
 
 /**
- * Provides configuration settings for WoT (Web of Things) based validation of Things.
+ * Configuration for Thing-specific WoT validation.
  *
  * @since 3.6.0
  */
@@ -25,49 +27,74 @@ import org.eclipse.ditto.internal.utils.config.KnownConfigValue;
 public interface ThingValidationConfig {
 
     /**
-     * @return whether to enforce/validate a thing whenever its {@code description} is modified.
+     * Returns whether to enforce/validate a thing whenever its description is modified.
+     *
+     * @return whether to enforce/validate a thing whenever its description is modified.
      */
     boolean isEnforceThingDescriptionModification();
 
     /**
+     * Returns whether to enforce/validate attributes of a thing following the defined WoT properties.
+     *
      * @return whether to enforce/validate attributes of a thing following the defined WoT properties.
      */
     boolean isEnforceAttributes();
 
     /**
+     * Returns whether to enforce/validate inbox messages to a thing following the defined WoT action "input".
+     *
      * @return whether to enforce/validate inbox messages to a thing following the defined WoT action "input".
      */
     boolean isEnforceInboxMessagesInput();
 
     /**
+     * Returns whether to enforce/validate inbox message responses to a thing following the defined WoT action "output".
+     *
      * @return whether to enforce/validate inbox message responses to a thing following the defined WoT action "output".
      */
     boolean isEnforceInboxMessagesOutput();
 
     /**
+     * Returns whether to enforce/validate outbox messages from a thing following the defined WoT event "data".
+     *
      * @return whether to enforce/validate outbox messages from a thing following the defined WoT event "data".
      */
     boolean isEnforceOutboxMessages();
 
     /**
-     * @return whether to forbid deletion of a thing's {@code description}.
+     * Returns whether to forbid deletion of a thing's description.
+     *
+     * @return whether to forbid deletion of a thing's description.
      */
     boolean isForbidThingDescriptionDeletion();
 
     /**
+     * Returns whether to forbid persisting attributes which are not defined as properties in the WoT model.
+     *
      * @return whether to forbid persisting attributes which are not defined as properties in the WoT model.
      */
     boolean isForbidNonModeledAttributes();
 
     /**
+     * Returns whether to forbid dispatching of inbox messages which are not defined as actions in the WoT model.
+     *
      * @return whether to forbid dispatching of inbox messages which are not defined as actions in the WoT model.
      */
     boolean isForbidNonModeledInboxMessages();
 
     /**
+     * Returns whether to forbid dispatching of outbox messages which are not defined as events in the WoT model.
+     *
      * @return whether to forbid dispatching of outbox messages which are not defined as events in the WoT model.
      */
     boolean isForbidNonModeledOutboxMessages();
+
+    /**
+     * Returns a JSON representation of this configuration.
+     *
+     * @return the JSON representation.
+     */
+    JsonObject toJson();
 
     /**
      * An enumeration of the known config path expressions and their associated default values for
@@ -111,6 +138,69 @@ public interface ThingValidationConfig {
         public String getConfigPath() {
             return path;
         }
+    }
 
+    /**
+     * An enumeration of the known JSON field definitions for {@code ThingValidationConfig}.
+     */
+    final class JsonFields {
+
+        /**
+         * JSON field containing whether to enforce/validate a thing whenever its description is modified.
+         */
+        public static final JsonFieldDefinition<Boolean> ENFORCE_THING_DESCRIPTION_MODIFICATION =
+                JsonFieldDefinition.ofBoolean("enforceThingDescriptionModification");
+
+        /**
+         * JSON field containing whether to enforce/validate attributes of a thing following the defined WoT properties.
+         */
+        public static final JsonFieldDefinition<Boolean> ENFORCE_ATTRIBUTES =
+                JsonFieldDefinition.ofBoolean("enforceAttributes");
+
+        /**
+         * JSON field containing whether to enforce/validate inbox messages to a thing following the defined WoT action "input".
+         */
+        public static final JsonFieldDefinition<Boolean> ENFORCE_INBOX_MESSAGES_INPUT =
+                JsonFieldDefinition.ofBoolean("enforceInboxMessagesInput");
+
+        /**
+         * JSON field containing whether to enforce/validate inbox message responses to a thing following the defined WoT action "output".
+         */
+        public static final JsonFieldDefinition<Boolean> ENFORCE_INBOX_MESSAGES_OUTPUT =
+                JsonFieldDefinition.ofBoolean("enforceInboxMessagesOutput");
+
+        /**
+         * JSON field containing whether to enforce/validate outbox messages from a thing following the defined WoT event "data".
+         */
+        public static final JsonFieldDefinition<Boolean> ENFORCE_OUTBOX_MESSAGES =
+                JsonFieldDefinition.ofBoolean("enforceOutboxMessages");
+
+        /**
+         * JSON field containing whether to forbid deletion of a thing's description.
+         */
+        public static final JsonFieldDefinition<Boolean> FORBID_THING_DESCRIPTION_DELETION =
+                JsonFieldDefinition.ofBoolean("forbidThingDescriptionDeletion");
+
+        /**
+         * JSON field containing whether to forbid persisting attributes which are not defined as properties in the WoT model.
+         */
+        public static final JsonFieldDefinition<Boolean> FORBID_NON_MODELED_ATTRIBUTES =
+                JsonFieldDefinition.ofBoolean("forbidNonModeledAttributes");
+
+        /**
+         * JSON field containing whether to forbid dispatching of inbox messages which are not defined as actions in the WoT model.
+         */
+        public static final JsonFieldDefinition<Boolean> FORBID_NON_MODELED_INBOX_MESSAGES =
+                JsonFieldDefinition.ofBoolean("forbidNonModeledInboxMessages");
+
+        /**
+         * JSON field containing whether to forbid dispatching of outbox messages which are not defined as events in the WoT model.
+         */
+        public static final JsonFieldDefinition<Boolean> FORBID_NON_MODELED_OUTBOX_MESSAGES =
+                JsonFieldDefinition.ofBoolean("forbidNonModeledOutboxMessages");
+
+        private JsonFields() {
+            throw new AssertionError();
+        }
     }
 }

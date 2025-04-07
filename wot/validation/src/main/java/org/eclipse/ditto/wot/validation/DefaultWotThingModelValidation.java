@@ -116,7 +116,7 @@ final class DefaultWotThingModelValidation implements WotThingModelValidation {
                             .newBuilder("Could not delete all Features, " +
                                     "as there are submodels defined as in the Thing's model");
             return CompletableFuture.failedFuture(exceptionBuilder
-                    .dittoHeaders(context.dittoHeaders())
+                    .dittoHeaders(context.getDittoHeaders())
                     .build());
         }
         // all other cases should not be handled here, but in "validateFeatureScopedDeletion"
@@ -260,7 +260,7 @@ final class DefaultWotThingModelValidation implements WotThingModelValidation {
                     .newBuilder("Attempting to update the Thing with a feature which is not " +
                             "defined in the model: <" + featureId + ">");
             return CompletableFuture.failedFuture(exceptionBuilder
-                    .dittoHeaders(context.dittoHeaders())
+                    .dittoHeaders(context.getDittoHeaders())
                     .build());
         }
         return success();
@@ -370,7 +370,7 @@ final class DefaultWotThingModelValidation implements WotThingModelValidation {
                             .newBuilder("Could not delete Feature <" + featureId + ">, " +
                                     "as it is defined as submodel in the Thing's model");
             return CompletableFuture.failedFuture(exceptionBuilder
-                    .dittoHeaders(context.dittoHeaders())
+                    .dittoHeaders(context.getDittoHeaders())
                     .build());
         }
 

@@ -151,8 +151,12 @@ public final class BackgroundSyncActor
 
     @Override
     protected void postEnhanceStatusReport(final JsonObjectBuilder statusReportBuilder) {
-        statusReportBuilder.set("progressPersisted", progressPersisted.toString());
-        statusReportBuilder.set("progressIndexed", progressIndexed.toString());
+        if (progressPersisted != null) {
+            statusReportBuilder.set("progressPersisted", progressPersisted.toString());
+        }
+        if (progressIndexed != null) {
+            statusReportBuilder.set("progressIndexed", progressIndexed.toString());
+        }
     }
 
     @Override

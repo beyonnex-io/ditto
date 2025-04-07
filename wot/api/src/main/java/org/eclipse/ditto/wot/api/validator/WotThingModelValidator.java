@@ -12,6 +12,7 @@
  */
 package org.eclipse.ditto.wot.api.validator;
 
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.function.Supplier;
@@ -31,6 +32,7 @@ import org.eclipse.ditto.things.model.ThingDefinition;
 import org.eclipse.ditto.wot.api.config.WotConfig;
 import org.eclipse.ditto.wot.api.resolver.WotThingModelResolver;
 import org.eclipse.ditto.wot.model.ThingModel;
+import org.eclipse.ditto.wot.validation.config.TmValidationConfig;
 
 /**
  * Validates different aspects of Ditto a {@link Thing} against a WoT {@link ThingModel} linked in the Thing's
@@ -522,18 +524,22 @@ public interface WotThingModelValidator {
     );
 
     /**
-     * Creates a new instance of WotThingModelValidator with the given {@code wotConfig}.
+     * Creates a new instance of WotThingModelValidator with the given {@code wotConfig}, {@code thingModelResolver}
+     * and {@code executor}.
      *
      * @param wotConfig the WoT config to use.
-     * @param thingModelResolver the ThingModel resolver to fetch and resolve (extensions, refs) of linked other
-     * ThingModels during the generation process.
-     * @param executor the executor to use to run async tasks.
+     * @param thingModelResolver the resolver to use for resolving WoT ThingModels.
+     * @param executor the executor to use for asynchronous operations.
+     * @param staticConfig the static WoT validation config to use.
+     * @param dynamicConfigs the dynamic WoT validation configs to use.
      * @return the created WotThingModelValidator.
      */
     static WotThingModelValidator of(final WotConfig wotConfig,
             final WotThingModelResolver thingModelResolver,
-            final Executor executor
+            final Executor executor,
+            final TmValidationConfig staticConfig,
+            final Set<TmValidationConfig> dynamicConfigs
     ) {
-        return new DefaultWotThingModelValidator(wotConfig, thingModelResolver, executor);
+        return new DefaultWotThingModelValidator(wotConfig, thingModelResolver, executor, staticConfig, dynamicConfigs);
     }
 }
