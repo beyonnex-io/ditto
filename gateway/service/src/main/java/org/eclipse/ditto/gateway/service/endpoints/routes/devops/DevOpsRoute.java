@@ -154,15 +154,9 @@ public final class DevOpsRoute extends AbstractRoute {
                 concat(
                         pathEndOrSingleSlash(() -> 
                             get(() -> {
-                                // Route through DevOpsCommandsActor
                                 return handlePerRequest(ctx,
-                                        ExecutePiggybackCommand.of(null,
-                                                null,
-                                                DEVOPS_COMMANDS_ACTOR_SELECTION,
-                                                RetrieveMergedWotValidationConfig.of(
-                                                        ThingId.of("_"), // Use a wildcard thing ID for global config
-                                                        ValidationContext.fromJson(JsonFactory.newObject()),
-                                                        dittoHeaders).toJson(),
+                                        RetrieveWotValidationConfig.of(
+                                                ThingId.of("_"), // Use a wildcard thing ID for global config
                                                 dittoHeaders));
                             })
                         ),
@@ -170,30 +164,18 @@ public final class DevOpsRoute extends AbstractRoute {
                                 concat(
                                         get(() -> {
                                             return handlePerRequest(ctx,
-                                                    ExecutePiggybackCommand.of(null,
-                                                            null,
-                                                            DEVOPS_COMMANDS_ACTOR_SELECTION,
-                                                            RetrieveWotValidationConfig.of(ThingId.of(scopeId), dittoHeaders).toJson(),
-                                                            dittoHeaders));
+                                                    RetrieveWotValidationConfig.of(ThingId.of(scopeId), dittoHeaders));
                                         }),
                                         put(() -> extractDataBytes(payloadSource ->
                                                 handlePerRequest(ctx, dittoHeaders, payloadSource,
-                                                        json -> ExecutePiggybackCommand.of(null,
-                                                                null,
-                                                                DEVOPS_COMMANDS_ACTOR_SELECTION,
-                                                                ModifyWotValidationConfig.of(ThingId.of(scopeId),
-                                                                        ImmutableWoTValidationConfig.fromJson(JsonFactory.readFrom(json).asObject()).toJson(),
-                                                                        dittoHeaders).toJson(),
+                                                        json -> ModifyWotValidationConfig.of(ThingId.of(scopeId),
+                                                                ImmutableWoTValidationConfig.fromJson(JsonFactory.readFrom(json).asObject()).toJson(),
                                                                 dittoHeaders)
                                                 )
                                         )),
                                         delete(() -> {
                                             return handlePerRequest(ctx,
-                                                    ExecutePiggybackCommand.of(null,
-                                                            null,
-                                                            DEVOPS_COMMANDS_ACTOR_SELECTION,
-                                                            DeleteWotValidationConfig.of(ThingId.of(scopeId), dittoHeaders).toJson(),
-                                                            dittoHeaders));
+                                                    DeleteWotValidationConfig.of(ThingId.of(scopeId), dittoHeaders));
                                         })
                                 )
                         )
