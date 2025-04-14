@@ -68,10 +68,10 @@ public final class ThingsMappingStrategies extends MappingStrategies {
         return MappingStrategiesBuilder.newInstance()
                 .add(Thing.class, jsonObject -> ThingsModelFactory.newThing(jsonObject)) // do not replace with lambda
                 .add(PolicyTag.class, PolicyTag::fromJson)
-//                .add(RetrieveWotValidationConfig.TYPE, RetrieveWotValidationConfig::fromJson)
-//                .add(ModifyWotValidationConfig.TYPE, ModifyWotValidationConfig::fromJson)
-//                .add(DeleteWotValidationConfig.TYPE, DeleteWotValidationConfig::fromJson)
-//                .add(RetrieveMergedWotValidationConfig.TYPE, RetrieveMergedWotValidationConfig::fromJson)
+                .add(RetrieveWotValidationConfig.TYPE, RetrieveWotValidationConfig::fromJson)
+                .add(ModifyWotValidationConfig.TYPE, ModifyWotValidationConfig::fromJson)
+                .add(DeleteWotValidationConfig.TYPE, DeleteWotValidationConfig::fromJson)
+                .add(RetrieveMergedWotValidationConfig.TYPE, RetrieveMergedWotValidationConfig::fromJson)
                 .putAll(GlobalMappingStrategies.getInstance())
                 .build();
     }
