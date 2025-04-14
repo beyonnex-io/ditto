@@ -19,6 +19,9 @@ import java.util.function.Predicate;
 
 import javax.annotation.concurrent.Immutable;
 
+import org.eclipse.ditto.base.model.entity.id.EntityId;
+import org.eclipse.ditto.base.model.entity.id.WithEntityId;
+import org.eclipse.ditto.base.model.entity.type.EntityType;
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.base.model.json.JsonParsableCommand;
 import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
@@ -29,8 +32,6 @@ import org.eclipse.ditto.json.JsonFieldDefinition;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.json.JsonPointer;
-import org.eclipse.ditto.things.model.ThingId;
-import org.eclipse.ditto.things.model.WithThingId;
 import org.eclipse.ditto.things.model.signals.commands.ThingCommand;
 
 /**
@@ -39,7 +40,7 @@ import org.eclipse.ditto.things.model.signals.commands.ThingCommand;
 @Immutable
 @JsonParsableCommand(typePrefix = ThingCommand.TYPE_PREFIX, name = ModifyWotValidationConfig.NAME)
 public final class ModifyWotValidationConfig extends AbstractCommand<ModifyWotValidationConfig>
-        implements Command<ModifyWotValidationConfig>, WithThingId {
+        implements Command<ModifyWotValidationConfig>, WithEntityId {
 
     /**
      * Name of the command.
@@ -51,30 +52,26 @@ public final class ModifyWotValidationConfig extends AbstractCommand<ModifyWotVa
      */
     public static final String TYPE = ThingCommand.TYPE_PREFIX + NAME;
 
-    private final ThingId thingId;
+    private static final EntityId DUMMY_ENTITY_ID = EntityId.of(EntityType.of("wot"), "validation:config");
     private final JsonObject config;
 
-    private ModifyWotValidationConfig(final ThingId thingId,
-            final JsonObject config,
+    private ModifyWotValidationConfig(final JsonObject config,
             final DittoHeaders dittoHeaders) {
         super(TYPE, dittoHeaders);
-        this.thingId = checkNotNull(thingId, "thingId");
         this.config = checkNotNull(config, "config");
     }
 
     /**
      * Creates a new {@code ModifyWotValidationConfig} command.
      *
-     * @param thingId the ID of the thing.
      * @param config the configuration to set.
      * @param dittoHeaders the headers of the command.
      * @return the command.
      * @throws NullPointerException if any argument is {@code null}.
      */
-    public static ModifyWotValidationConfig of(final ThingId thingId,
-            final JsonObject config,
+    public static ModifyWotValidationConfig of(final JsonObject config,
             final DittoHeaders dittoHeaders) {
-        return new ModifyWotValidationConfig(thingId, config, dittoHeaders);
+        return new ModifyWotValidationConfig(config, dittoHeaders);
     }
 
     /**
@@ -87,14 +84,13 @@ public final class ModifyWotValidationConfig extends AbstractCommand<ModifyWotVa
      */
     public static ModifyWotValidationConfig fromJson(final JsonObject jsonObject,
             final DittoHeaders dittoHeaders) {
-        final ThingId thingId = ThingId.of(jsonObject.getValueOrThrow(ThingCommand.JsonFields.JSON_THING_ID));
         final JsonObject config = jsonObject.getValueOrThrow(JsonFields.CONFIG);
-        return of(thingId, config, dittoHeaders);
+        return of(config, dittoHeaders);
     }
 
     @Override
-    public ThingId getEntityId() {
-        return thingId;
+    public EntityId getEntityId() {
+        return DUMMY_ENTITY_ID;
     }
 
     /**
@@ -120,7 +116,6 @@ public final class ModifyWotValidationConfig extends AbstractCommand<ModifyWotVa
     protected void appendPayload(final JsonObjectBuilder jsonObjectBuilder,
             final JsonSchemaVersion schemaVersion,
             final Predicate<JsonField> predicate) {
-        jsonObjectBuilder.set(ThingCommand.JsonFields.JSON_THING_ID, thingId.toString());
         jsonObjectBuilder.set(JsonFields.CONFIG, config);
     }
 
@@ -136,12 +131,12 @@ public final class ModifyWotValidationConfig extends AbstractCommand<ModifyWotVa
 
     @Override
     public ModifyWotValidationConfig setDittoHeaders(final DittoHeaders dittoHeaders) {
-        return of(thingId, config, dittoHeaders);
+        return of(config, dittoHeaders);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), thingId, config);
+        return Objects.hash(super.hashCode(), config);
     }
 
     @Override
@@ -156,15 +151,13 @@ public final class ModifyWotValidationConfig extends AbstractCommand<ModifyWotVa
             return false;
         }
         final ModifyWotValidationConfig that = (ModifyWotValidationConfig) o;
-        return Objects.equals(thingId, that.thingId) &&
-                Objects.equals(config, that.config);
+        return Objects.equals(config, that.config);
     }
 
     @Override
     public String toString() {
         return getClass().getSimpleName() + " [" +
                 super.toString() +
-                ", thingId=" + thingId +
                 ", config=" + config +
                 "]";
     }

@@ -19,19 +19,18 @@ import java.util.function.Predicate;
 
 import javax.annotation.concurrent.Immutable;
 
+import org.eclipse.ditto.base.model.entity.id.EntityId;
+import org.eclipse.ditto.base.model.entity.id.WithEntityId;
+import org.eclipse.ditto.base.model.entity.type.EntityType;
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.base.model.json.JsonParsableCommand;
 import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
 import org.eclipse.ditto.base.model.signals.commands.AbstractCommand;
 import org.eclipse.ditto.base.model.signals.commands.Command;
 import org.eclipse.ditto.json.JsonField;
-import org.eclipse.ditto.json.JsonFieldDefinition;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.json.JsonPointer;
-import org.eclipse.ditto.things.model.ThingId;
-import org.eclipse.ditto.things.model.ValidationContext;
-import org.eclipse.ditto.things.model.WithThingId;
 import org.eclipse.ditto.things.model.signals.commands.ThingCommand;
 
 /**
@@ -40,7 +39,7 @@ import org.eclipse.ditto.things.model.signals.commands.ThingCommand;
 @Immutable
 @JsonParsableCommand(typePrefix = ThingCommand.TYPE_PREFIX, name = RetrieveMergedWotValidationConfig.NAME)
 public final class RetrieveMergedWotValidationConfig extends AbstractCommand<RetrieveMergedWotValidationConfig>
-        implements Command<RetrieveMergedWotValidationConfig>, WithThingId {
+        implements Command<RetrieveMergedWotValidationConfig>, WithEntityId {
 
     /**
      * Name of the command.
@@ -52,30 +51,21 @@ public final class RetrieveMergedWotValidationConfig extends AbstractCommand<Ret
      */
     public static final String TYPE = ThingCommand.TYPE_PREFIX + NAME;
 
-    private final ThingId thingId;
-    private final ValidationContext validationContext;
+    private static final EntityId DUMMY_ENTITY_ID = EntityId.of(EntityType.of("wot"), "validation:config");
 
-    private RetrieveMergedWotValidationConfig(final ThingId thingId,
-            final ValidationContext validationContext,
-            final DittoHeaders dittoHeaders) {
+    private RetrieveMergedWotValidationConfig(final DittoHeaders dittoHeaders) {
         super(TYPE, dittoHeaders);
-        this.thingId = checkNotNull(thingId, "thingId");
-        this.validationContext = validationContext;
     }
 
     /**
      * Creates a new {@code RetrieveMergedWotValidationConfig} command.
      *
-     * @param thingId the ID of the thing.
-     * @param validationContext the validation context.
      * @param dittoHeaders the headers of the command.
      * @return the command.
-     * @throws NullPointerException if {@code thingId} is {@code null}.
+     * @throws NullPointerException if any argument is {@code null}.
      */
-    public static RetrieveMergedWotValidationConfig of(final ThingId thingId,
-            final ValidationContext validationContext,
-            final DittoHeaders dittoHeaders) {
-        return new RetrieveMergedWotValidationConfig(thingId, validationContext, dittoHeaders);
+    public static RetrieveMergedWotValidationConfig of(final DittoHeaders dittoHeaders) {
+        return new RetrieveMergedWotValidationConfig(dittoHeaders);
     }
 
     /**
@@ -88,25 +78,12 @@ public final class RetrieveMergedWotValidationConfig extends AbstractCommand<Ret
      */
     public static RetrieveMergedWotValidationConfig fromJson(final JsonObject jsonObject,
             final DittoHeaders dittoHeaders) {
-        final ThingId thingId = ThingId.of(jsonObject.getValueOrThrow(ThingCommand.JsonFields.JSON_THING_ID));
-        final ValidationContext validationContext = jsonObject.getValue(JsonFields.VALIDATION_CONTEXT)
-                .map(ValidationContext::fromJson)
-                .orElse(null);
-        return of(thingId, validationContext, dittoHeaders);
+        return of(dittoHeaders);
     }
 
     @Override
-    public ThingId getEntityId() {
-        return thingId;
-    }
-
-    /**
-     * Returns the validation context.
-     *
-     * @return the validation context.
-     */
-    public ValidationContext getValidationContext() {
-        return validationContext;
+    public EntityId getEntityId() {
+        return DUMMY_ENTITY_ID;
     }
 
     @Override
@@ -123,10 +100,7 @@ public final class RetrieveMergedWotValidationConfig extends AbstractCommand<Ret
     protected void appendPayload(final JsonObjectBuilder jsonObjectBuilder,
             final JsonSchemaVersion schemaVersion,
             final Predicate<JsonField> predicate) {
-        jsonObjectBuilder.set(ThingCommand.JsonFields.JSON_THING_ID, thingId.toString());
-        if (validationContext != null) {
-            jsonObjectBuilder.set(JsonFields.VALIDATION_CONTEXT, validationContext.toJson());
-        }
+        // No payload to append
     }
 
     @Override
@@ -141,12 +115,12 @@ public final class RetrieveMergedWotValidationConfig extends AbstractCommand<Ret
 
     @Override
     public RetrieveMergedWotValidationConfig setDittoHeaders(final DittoHeaders dittoHeaders) {
-        return of(thingId, validationContext, dittoHeaders);
+        return of(dittoHeaders);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), thingId, validationContext);
+        return Objects.hash(super.hashCode());
     }
 
     @Override
@@ -160,25 +134,13 @@ public final class RetrieveMergedWotValidationConfig extends AbstractCommand<Ret
         if (!super.equals(o)) {
             return false;
         }
-        final RetrieveMergedWotValidationConfig that = (RetrieveMergedWotValidationConfig) o;
-        return Objects.equals(thingId, that.thingId) &&
-                Objects.equals(validationContext, that.validationContext);
+        return true;
     }
 
     @Override
     public String toString() {
         return getClass().getSimpleName() + " [" +
                 super.toString() +
-                ", thingId=" + thingId +
-                ", validationContext=" + validationContext +
                 "]";
-    }
-
-    /**
-     * JSON field definitions.
-     */
-    static final class JsonFields {
-        static final JsonFieldDefinition<JsonObject> VALIDATION_CONTEXT =
-                JsonFieldDefinition.ofJsonObject("validationContext");
     }
 }

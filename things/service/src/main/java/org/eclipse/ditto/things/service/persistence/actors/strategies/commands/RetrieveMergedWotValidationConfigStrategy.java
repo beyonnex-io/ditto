@@ -39,7 +39,6 @@ import org.eclipse.ditto.things.model.devops.commands.RetrieveMergedWotValidatio
 import org.eclipse.ditto.wot.api.config.WotConfig;
 import org.eclipse.ditto.wot.validation.config.TmValidationConfig;
 import org.eclipse.ditto.wot.validation.config.WotValidationConfigMerger;
-import org.eclipse.ditto.things.model.ValidationContext;
 
 /**
  * This strategy handles the {@link RetrieveMergedWotValidationConfig} command.
@@ -75,7 +74,7 @@ final class RetrieveMergedWotValidationConfigStrategy extends AbstractThingComma
                     final Set<TmValidationConfig> dynamicConfigs = orSet.getElements();
 
                     final TmValidationConfig mergedConfig = WotValidationConfigMerger.of(wotConfig.getValidationConfig(), dynamicConfigs)
-                            .merge(convertToWotValidationContext(command.getValidationContext()));
+                            .merge(null);
 
                     final ImmutableThingConfigOverrides thingConfig = ImmutableThingConfigOverrides.of(
                             ImmutableThingEnforceOverrides.of(
@@ -150,20 +149,5 @@ final class RetrieveMergedWotValidationConfigStrategy extends AbstractThingComma
     @Override
     public Optional<EntityTag> nextEntityTag(final RetrieveMergedWotValidationConfig command, @Nullable final Thing entity) {
         return Optional.empty();
-    }
-
-    /**
-     * Converts a ValidationContext from things/model to wot/validation.
-     *
-     * @param thingsValidationContext the ValidationContext from things/model
-     * @return the ValidationContext from wot/validation
-     */
-    private org.eclipse.ditto.wot.validation.ValidationContext convertToWotValidationContext(
-            final ValidationContext thingsValidationContext) {
-        return org.eclipse.ditto.wot.validation.ValidationContext.buildValidationContext(
-                thingsValidationContext.dittoHeaders(),
-                thingsValidationContext.thingDefinition(),
-                thingsValidationContext.featureDefinition()
-        );
     }
 } 

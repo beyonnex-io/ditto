@@ -156,7 +156,6 @@ public final class DevOpsRoute extends AbstractRoute {
                             get(() -> {
                                 return handlePerRequest(ctx,
                                         RetrieveWotValidationConfig.of(
-                                                ThingId.of("_"), // Use a wildcard thing ID for global config
                                                 dittoHeaders));
                             })
                         ),
@@ -164,18 +163,18 @@ public final class DevOpsRoute extends AbstractRoute {
                                 concat(
                                         get(() -> {
                                             return handlePerRequest(ctx,
-                                                    RetrieveWotValidationConfig.of(ThingId.of(scopeId), dittoHeaders));
+                                                    RetrieveWotValidationConfig.of(dittoHeaders));
                                         }),
                                         put(() -> extractDataBytes(payloadSource ->
                                                 handlePerRequest(ctx, dittoHeaders, payloadSource,
-                                                        json -> ModifyWotValidationConfig.of(ThingId.of(scopeId),
+                                                        json -> ModifyWotValidationConfig.of(
                                                                 ImmutableWoTValidationConfig.fromJson(JsonFactory.readFrom(json).asObject()).toJson(),
                                                                 dittoHeaders)
                                                 )
                                         )),
                                         delete(() -> {
                                             return handlePerRequest(ctx,
-                                                    DeleteWotValidationConfig.of(ThingId.of(scopeId), dittoHeaders));
+                                                    DeleteWotValidationConfig.of( dittoHeaders));
                                         })
                                 )
                         )
