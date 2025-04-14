@@ -28,6 +28,12 @@ import org.eclipse.ditto.things.service.common.config.DittoThingsConfig;
 import org.eclipse.ditto.internal.utils.persistentactors.results.Result;
 import org.eclipse.ditto.internal.utils.persistentactors.results.ResultFactory;
 import org.eclipse.ditto.things.model.signals.events.ThingEvent;
+import org.eclipse.ditto.wot.validation.config.ImmutableTmValidationConfig;
+import org.eclipse.ditto.wot.validation.config.TmValidationConfig;
+import org.eclipse.ditto.wot.validation.config.DefaultThingValidationConfig;
+import org.eclipse.ditto.wot.validation.config.DefaultFeatureValidationConfig;
+import org.eclipse.ditto.base.model.headers.DittoHeaders;
+import org.eclipse.ditto.things.model.signals.events.WotValidationConfigDeleted;
 
 /**
  * This strategy handles the {@link DeleteWotValidationConfig} command.
@@ -64,7 +70,27 @@ public final class DeleteWotValidationConfigStrategy extends AbstractThingComman
     @Override
     public Result<ThingEvent<?>> doApply(final Context<ThingId> context, @Nullable final Thing entity,
             final long nextRevision, final DeleteWotValidationConfig command, @Nullable final Metadata metadata) {
-        return ResultFactory.newMutationResult(command, null, command);
+        final DittoHeaders dittoHeaders = command.getDittoHeaders();
+
+        // Create deletion event
+        final WotValidationConfigDeleted event =
+                WotValidationConfigDeleted.of(context.getState(), nextRevision,
+                        getEventTimestamp(), dittoHeaders, metadata);
+
+        // Create a TmValidationConfig instance with the ID to remove
+        final TmValidationConfig config = ImmutableTmValidationConfig.of(
+            context.getState().toString(),
+            false, // enabled
+            false, // logWarningInsteadOfFailingApiCalls
+            DefaultThingValidationConfig.of(),
+            DefaultFeatureValidationConfig.of()
+        );
+        
+        // Remove config from distributed data and wait for completion
+        return ddata.remove(config)
+            .thenApply(done -> ResultFactory.<ThingEvent<?>>newMutationResult(command, event, event))
+            .toCompletableFuture()
+            .join();
     }
 
     @Override

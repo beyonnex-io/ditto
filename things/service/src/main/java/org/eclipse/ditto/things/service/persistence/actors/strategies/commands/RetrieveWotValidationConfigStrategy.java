@@ -13,11 +13,13 @@
 package org.eclipse.ditto.things.service.persistence.actors.strategies.commands;
 
 import java.util.Optional;
+import java.util.Set;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
 import org.apache.pekko.actor.ActorSystem;
+import org.apache.pekko.cluster.ddata.ORSet;
 import org.eclipse.ditto.base.model.entity.metadata.Metadata;
 import org.eclipse.ditto.base.model.headers.WithDittoHeaders;
 import org.eclipse.ditto.base.model.headers.entitytag.EntityTag;
@@ -28,6 +30,8 @@ import org.eclipse.ditto.things.service.common.config.DittoThingsConfig;
 import org.eclipse.ditto.internal.utils.persistentactors.results.Result;
 import org.eclipse.ditto.internal.utils.persistentactors.results.ResultFactory;
 import org.eclipse.ditto.things.model.signals.events.ThingEvent;
+import org.eclipse.ditto.wot.validation.config.TmValidationConfig;
+import org.eclipse.ditto.things.model.signals.commands.exceptions.ThingNotAccessibleException;
 
 /**
  * This strategy handles the {@link RetrieveWotValidationConfig} command.
@@ -64,7 +68,27 @@ public final class RetrieveWotValidationConfigStrategy extends AbstractThingComm
     @Override
     public Result<ThingEvent<?>> doApply(final Context<ThingId> context, @Nullable final Thing entity,
             final long nextRevision, final RetrieveWotValidationConfig command, @Nullable final Metadata metadata) {
-        return ResultFactory.newQueryResult(command, command);
+        return ddata.getConfigs()
+            .thenApply(orSet -> {
+                final Set<TmValidationConfig> configs = orSet.getElements();
+                // Find the config for the requested ID
+                final Optional<TmValidationConfig> config = configs.stream()
+                    .filter(c -> c.getId().equals(context.getState().toString()))
+                    .findFirst();
+                    
+                if (config.isPresent()) {
+                    return ResultFactory.<ThingEvent<?>>newQueryResult(command, command);
+                } else {
+                    return ResultFactory.<ThingEvent<?>>newErrorResult(
+                        ThingNotAccessibleException.newBuilder(context.getState())
+                            .dittoHeaders(command.getDittoHeaders())
+                            .build(),
+                        command
+                    );
+                }
+            })
+            .toCompletableFuture()
+            .join();
     }
 
     @Override
