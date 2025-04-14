@@ -25,6 +25,10 @@ import org.eclipse.ditto.internal.utils.cluster.MappingStrategiesBuilder;
 import org.eclipse.ditto.policies.api.PolicyTag;
 import org.eclipse.ditto.things.model.Thing;
 import org.eclipse.ditto.things.model.ThingsModelFactory;
+import org.eclipse.ditto.things.model.devops.commands.RetrieveWotValidationConfig;
+import org.eclipse.ditto.things.model.devops.commands.ModifyWotValidationConfig;
+import org.eclipse.ditto.things.model.devops.commands.DeleteWotValidationConfig;
+import org.eclipse.ditto.things.model.devops.commands.RetrieveMergedWotValidationConfig;
 
 /**
  * {@link MappingStrategies} for the Things service containing all {@link Jsonifiable} types known to Things.
@@ -64,6 +68,10 @@ public final class ThingsMappingStrategies extends MappingStrategies {
         return MappingStrategiesBuilder.newInstance()
                 .add(Thing.class, jsonObject -> ThingsModelFactory.newThing(jsonObject)) // do not replace with lambda
                 .add(PolicyTag.class, PolicyTag::fromJson)
+//                .add(RetrieveWotValidationConfig.TYPE, RetrieveWotValidationConfig::fromJson)
+//                .add(ModifyWotValidationConfig.TYPE, ModifyWotValidationConfig::fromJson)
+//                .add(DeleteWotValidationConfig.TYPE, DeleteWotValidationConfig::fromJson)
+//                .add(RetrieveMergedWotValidationConfig.TYPE, RetrieveMergedWotValidationConfig::fromJson)
                 .putAll(GlobalMappingStrategies.getInstance())
                 .build();
     }
