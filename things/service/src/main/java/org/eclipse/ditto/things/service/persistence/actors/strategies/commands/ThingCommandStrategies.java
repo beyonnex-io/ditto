@@ -98,7 +98,6 @@ public final class ThingCommandStrategies
         addStrategy(new DeleteThingStrategy(system));
         addStrategy(new MergeThingStrategy(system));
         addStrategy(new MigrateThingDefinitionStrategy(system));
-        addStrategy(new CreateWotValidationConfigStrategy(system));
         addStrategy(new ModifyWotValidationConfigStrategy(thingsConfig, ddata, system));
         addStrategy(new DeleteWotValidationConfigStrategy(thingsConfig, ddata, system));
         addStrategy(new RetrieveWotValidationConfigStrategy(thingsConfig, ddata, system));

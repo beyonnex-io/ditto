@@ -45,7 +45,7 @@ public final class RetrieveWotValidationConfigResponse extends AbstractCommandRe
     /**
      * Type of this response.
      */
-    public static final String TYPE = ThingCommand.TYPE_PREFIX + RetrieveWotValidationConfig.NAME;
+    public static final String TYPE = WotValidationConfigCommand.TYPE_PREFIX + "retrieveResponse";
 
     private final ThingId thingId;
     private final JsonObject config;
@@ -109,7 +109,7 @@ public final class RetrieveWotValidationConfigResponse extends AbstractCommandRe
 
     @Override
     public String getResourceType() {
-        return ThingCommand.RESOURCE_TYPE;
+        return WotValidationConfigCommand.RESOURCE_TYPE;
     }
 
     @Override

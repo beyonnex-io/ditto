@@ -10,7 +10,7 @@
  *
  * SPDX-License-Identifier: EPL-2.0
  */
-package org.eclipse.ditto.things.model.signals.commands.modify;
+package org.eclipse.ditto.things.model.devops.commands;
 
 import org.eclipse.ditto.base.model.signals.commands.Command;
 import org.eclipse.ditto.things.model.signals.commands.ThingCommand;
@@ -20,11 +20,15 @@ import org.eclipse.ditto.things.model.signals.commands.ThingCommand;
  *
  * @param <T> the type of the implementing class.
  */
-public interface WotValidationConfigCommand<T extends WotValidationConfigCommand<T>> extends ThingCommand<T> {
+public interface WotValidationConfigCommand<T extends WotValidationConfigCommand<T>> extends Command<T> {
 
     /**
      * Type prefix of WoT validation config commands.
      */
-    String TYPE_PREFIX = ThingCommand.TYPE_PREFIX + "wotValidationConfig.";
+    String TYPE_PREFIX = ThingCommand.TYPE_PREFIX + "wot-validation-config:";
 
+    /**
+     * Resource type of WoT validation config commands.
+     */
+    String RESOURCE_TYPE = "wot-validation-config";
 } 

@@ -32,14 +32,15 @@ import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.json.JsonPointer;
 import org.eclipse.ditto.things.model.signals.commands.ThingCommand;
+import org.eclipse.ditto.things.model.devops.commands.WotValidationConfigCommand;
 
 /**
  * Command which retrieves the WoT validation configuration.
  */
 @Immutable
-@JsonParsableCommand(typePrefix = ThingCommand.TYPE_PREFIX, name = RetrieveWotValidationConfig.NAME)
+@JsonParsableCommand(typePrefix = WotValidationConfigCommand.TYPE_PREFIX, name = RetrieveWotValidationConfig.NAME)
 public final class RetrieveWotValidationConfig extends AbstractCommand<RetrieveWotValidationConfig>
-        implements Command<RetrieveWotValidationConfig>, WithEntityId {
+        implements WotValidationConfigCommand<RetrieveWotValidationConfig>, WithEntityId {
 
     /**
      * Name of the command.
@@ -93,7 +94,7 @@ public final class RetrieveWotValidationConfig extends AbstractCommand<RetrieveW
 
     @Override
     public String getResourceType() {
-        return ThingCommand.RESOURCE_TYPE;
+        return WotValidationConfigCommand.RESOURCE_TYPE;
     }
 
     @Override
@@ -110,7 +111,7 @@ public final class RetrieveWotValidationConfig extends AbstractCommand<RetrieveW
 
     @Override
     public String getTypePrefix() {
-        return ThingCommand.TYPE_PREFIX;
+        return WotValidationConfigCommand.TYPE_PREFIX;
     }
 
     @Override

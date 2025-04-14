@@ -46,12 +46,12 @@ public final class RetrieveMergedWotValidationConfigResponse extends AbstractCom
     /**
      * Type prefix of WoT validation config commands.
      */
-    public static final String TYPE_PREFIX = "devops:";
+    public static final String TYPE_PREFIX = WotValidationConfigCommand.TYPE_PREFIX;
 
     /**
      * Name of the command response.
      */
-    public static final String NAME = "retrieveMergedWotValidationConfigResponse";
+    public static final String NAME = "retrieveMergedResponse";
 
     /**
      * Type of this command response.
@@ -131,7 +131,7 @@ public final class RetrieveMergedWotValidationConfigResponse extends AbstractCom
 
     @Override
     public String getResourceType() {
-        return "wot-validation-config";
+        return WotValidationConfigCommand.RESOURCE_TYPE;
     }
 
     @Override

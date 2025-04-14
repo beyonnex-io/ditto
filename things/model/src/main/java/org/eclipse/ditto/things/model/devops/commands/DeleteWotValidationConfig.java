@@ -26,30 +26,28 @@ import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.base.model.json.JsonParsableCommand;
 import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
 import org.eclipse.ditto.base.model.signals.commands.AbstractCommand;
-import org.eclipse.ditto.base.model.signals.commands.Command;
 import org.eclipse.ditto.json.JsonField;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.json.JsonPointer;
-import org.eclipse.ditto.things.model.signals.commands.ThingCommand;
 
 /**
  * Command which deletes the WoT validation configuration.
  */
 @Immutable
-@JsonParsableCommand(typePrefix = ThingCommand.TYPE_PREFIX, name = DeleteWotValidationConfig.NAME)
+@JsonParsableCommand(typePrefix = WotValidationConfigCommand.TYPE_PREFIX, name = DeleteWotValidationConfig.NAME)
 public final class DeleteWotValidationConfig extends AbstractCommand<DeleteWotValidationConfig>
-        implements Command<DeleteWotValidationConfig>, WithEntityId {
+        implements WotValidationConfigCommand<DeleteWotValidationConfig>, WithEntityId {
 
     /**
      * Name of the command.
      */
-    public static final String NAME = "deleteWotValidationConfig";
+    public static final String NAME = "delete";
 
     /**
      * Type of this command.
      */
-    public static final String TYPE = ThingCommand.TYPE_PREFIX + NAME;
+    public static final String TYPE = WotValidationConfigCommand.TYPE_PREFIX + NAME;
 
     private static final EntityId DUMMY_ENTITY_ID = EntityId.of(EntityType.of("wot"), "validation:config");
 
@@ -93,7 +91,7 @@ public final class DeleteWotValidationConfig extends AbstractCommand<DeleteWotVa
 
     @Override
     public String getResourceType() {
-        return ThingCommand.RESOURCE_TYPE;
+        return WotValidationConfigCommand.RESOURCE_TYPE;
     }
 
     @Override
@@ -110,7 +108,7 @@ public final class DeleteWotValidationConfig extends AbstractCommand<DeleteWotVa
 
     @Override
     public String getTypePrefix() {
-        return ThingCommand.TYPE_PREFIX;
+        return WotValidationConfigCommand.TYPE_PREFIX;
     }
 
     @Override
