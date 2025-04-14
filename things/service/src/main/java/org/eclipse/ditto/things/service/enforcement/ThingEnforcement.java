@@ -13,6 +13,7 @@
 package org.eclipse.ditto.things.service.enforcement;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 import org.apache.pekko.actor.ActorRef;
@@ -24,6 +25,7 @@ import org.eclipse.ditto.policies.enforcement.PolicyEnforcer;
 import org.eclipse.ditto.policies.enforcement.config.EnforcementConfig;
 import org.eclipse.ditto.policies.model.Policy;
 import org.eclipse.ditto.things.model.Thing;
+import org.eclipse.ditto.things.model.devops.commands.WotValidationConfigCommand;
 import org.eclipse.ditto.things.model.signals.commands.modify.CreateThing;
 
 /**
@@ -46,6 +48,10 @@ public final class ThingEnforcement extends AbstractEnforcementReloaded<Signal<?
 
     @Override
     public CompletionStage<Signal<?>> authorizeSignal(final Signal<?> signal, final PolicyEnforcer policyEnforcer) {
+        if (shouldSkipEnforcement(signal)) {
+            return CompletableFuture.completedFuture(signal);
+        }
+
         final Signal<?> adaptedSignal;
         if (signal instanceof CreateThing createThing) {
             final Thing thingWithBestEffortPolicyId = createThing.getThing()
@@ -69,6 +75,11 @@ public final class ThingEnforcement extends AbstractEnforcementReloaded<Signal<?
                         "Unsupported signal to perform authorizeSignal: " + adaptedSignal
                 ));
     }
+
+    private boolean shouldSkipEnforcement(final Signal<?> signal) {
+        return signal instanceof WotValidationConfigCommand<?>;
+    }
+
 
     @Override
     public CompletionStage<Signal<?>> authorizeSignalWithMissingEnforcer(final Signal<?> signal) {
@@ -95,6 +106,10 @@ public final class ThingEnforcement extends AbstractEnforcementReloaded<Signal<?
     @Override
     public CompletionStage<CommandResponse<?>> filterResponse(final CommandResponse<?> commandResponse,
             final PolicyEnforcer policyEnforcer) {
+        if (shouldSkipFiltering(commandResponse)) {
+            return CompletableFuture.completedFuture(commandResponse);
+        }
+
         return enforcementStrategies.stream()
                 .filter(strategy -> strategy.responseIsApplicable(commandResponse))
                 .findFirst()
@@ -102,5 +117,9 @@ public final class ThingEnforcement extends AbstractEnforcementReloaded<Signal<?
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Unsupported command response to perform filterResponse: " + commandResponse
                 ));
+    }
+
+    private boolean shouldSkipFiltering(final CommandResponse<?> response) {
+        return true;
     }
 }
