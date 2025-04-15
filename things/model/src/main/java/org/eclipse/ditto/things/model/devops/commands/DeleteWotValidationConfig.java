@@ -12,98 +12,70 @@
  */
 package org.eclipse.ditto.things.model.devops.commands;
 
-import static org.eclipse.ditto.base.model.common.ConditionChecker.checkNotNull;
-
 import java.util.Objects;
 import java.util.function.Predicate;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
-import org.eclipse.ditto.base.model.entity.id.EntityId;
-import org.eclipse.ditto.base.model.entity.id.WithEntityId;
-import org.eclipse.ditto.base.model.entity.type.EntityType;
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.base.model.json.JsonParsableCommand;
 import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
-import org.eclipse.ditto.base.model.signals.commands.AbstractCommand;
+import org.eclipse.ditto.base.model.signals.commands.Command;
+import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonField;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.json.JsonPointer;
 
 /**
- * Command which deletes the WoT validation configuration.
+ * Command to delete a WoT validation config.
  */
 @Immutable
 @JsonParsableCommand(typePrefix = WotValidationConfigCommand.TYPE_PREFIX, name = DeleteWotValidationConfig.NAME)
-public final class DeleteWotValidationConfig extends AbstractCommand<DeleteWotValidationConfig>
-        implements WotValidationConfigCommand<DeleteWotValidationConfig>, WithEntityId {
+public final class DeleteWotValidationConfig extends AbstractWotValidationConfigCommand<DeleteWotValidationConfig>
+        implements WotValidationConfigCommand<DeleteWotValidationConfig> {
 
     /**
      * Name of the command.
      */
-    public static final String NAME = "delete";
+    public static final String NAME = "deleteWotValidationConfig";
 
     /**
      * Type of this command.
      */
     public static final String TYPE = WotValidationConfigCommand.TYPE_PREFIX + NAME;
 
-    private static final EntityId DUMMY_ENTITY_ID = EntityId.of(EntityType.of("wot"), "validation:config");
-
-    private DeleteWotValidationConfig(final DittoHeaders dittoHeaders) {
-        super(TYPE, dittoHeaders);
+    private DeleteWotValidationConfig(final WotValidationConfigId configId, final DittoHeaders dittoHeaders) {
+        super(TYPE, configId, dittoHeaders);
     }
 
     /**
-     * Creates a new {@code DeleteWotValidationConfig} command.
+     * Creates a new instance of {@code DeleteWotValidationConfig}.
      *
+     * @param configId the ID of the validation config.
      * @param dittoHeaders the headers of the command.
-     * @return the command.
+     * @return the new instance.
      * @throws NullPointerException if any argument is {@code null}.
      */
-    public static DeleteWotValidationConfig of(final DittoHeaders dittoHeaders) {
-        return new DeleteWotValidationConfig(dittoHeaders);
+    public static DeleteWotValidationConfig of(final WotValidationConfigId configId, final DittoHeaders dittoHeaders) {
+        Objects.requireNonNull(configId, "configId");
+        Objects.requireNonNull(dittoHeaders, "dittoHeaders");
+        return new DeleteWotValidationConfig(configId, dittoHeaders);
     }
 
     /**
-     * Creates a new {@code DeleteWotValidationConfig} from a JSON object.
+     * Creates a new instance of {@code DeleteWotValidationConfig} from a JSON object.
      *
-     * @param jsonObject the JSON object of which the command is to be created.
+     * @param jsonObject the JSON object.
      * @param dittoHeaders the headers of the command.
-     * @return the command.
-     * @throws NullPointerException if {@code jsonObject} is {@code null}.
+     * @return the new instance.
+     * @throws NullPointerException if any argument is {@code null}.
+     * @throws org.eclipse.ditto.json.JsonParseException if the passed in {@code jsonObject} was not in the expected format.
      */
-    public static DeleteWotValidationConfig fromJson(final JsonObject jsonObject,
-            final DittoHeaders dittoHeaders) {
-        return of(dittoHeaders);
-    }
-
-    @Override
-    public EntityId getEntityId() {
-        return DUMMY_ENTITY_ID;
-    }
-
-    @Override
-    public JsonPointer getResourcePath() {
-        return JsonPointer.empty();
-    }
-
-    @Override
-    public String getResourceType() {
-        return WotValidationConfigCommand.RESOURCE_TYPE;
-    }
-
-    @Override
-    protected void appendPayload(final JsonObjectBuilder jsonObjectBuilder,
-            final JsonSchemaVersion schemaVersion,
-            final Predicate<JsonField> predicate) {
-        // No payload to append
-    }
-
-    @Override
-    public Category getCategory() {
-        return Category.DELETE;
+    public static DeleteWotValidationConfig fromJson(final JsonObject jsonObject, final DittoHeaders dittoHeaders) {
+        final WotValidationConfigId configId = WotValidationConfigId.getInstance();
+        return of(configId, dittoHeaders);
     }
 
     @Override
@@ -112,33 +84,47 @@ public final class DeleteWotValidationConfig extends AbstractCommand<DeleteWotVa
     }
 
     @Override
+    public JsonPointer getResourcePath() {
+        return JsonPointer.of("/wot/validation/config");
+    }
+
+    @Override
+    public Command.Category getCategory() {
+        return Command.Category.DELETE;
+    }
+
+    @Override
     public DeleteWotValidationConfig setDittoHeaders(final DittoHeaders dittoHeaders) {
-        return of(dittoHeaders);
+        return of(getEntityId(), dittoHeaders);
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(super.hashCode());
+    protected void appendPayload(final JsonObjectBuilder jsonObjectBuilder, final JsonSchemaVersion schemaVersion,
+            final Predicate<JsonField> thePredicate) {
+        // No additional payload to append
     }
 
     @Override
-    public boolean equals(final Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) {
             return true;
         }
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        if (!super.equals(o)) {
-            return false;
-        }
-        return true;
+        final DeleteWotValidationConfig that = (DeleteWotValidationConfig) o;
+        return Objects.equals(getEntityId(), that.getEntityId());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getEntityId());
     }
 
     @Override
     public String toString() {
         return getClass().getSimpleName() + " [" +
-                super.toString() +
+                "configId=" + getEntityId() +
                 "]";
     }
 }

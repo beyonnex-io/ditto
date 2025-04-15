@@ -91,7 +91,7 @@ public final class WotValidationConfigPersistenceActor extends AbstractPersisten
         if (command instanceof ModifyWotValidationConfig modifyCommand) {
             final JsonObject configJson = modifyCommand.getConfig();
             final ImmutableWoTValidationConfig config = ImmutableWoTValidationConfig.fromJson(configJson);
-            final EntityId entityId = EntityId.of(EntityType.of(RESOURCE_TYPE), modifyCommand.getEntityId().toString());
+            final EntityId entityId = EntityId.of(EntityType.of(RESOURCE_TYPE), "test");
             
             // Create event
             final WotValidationConfigCreated event = WotValidationConfigCreated.of(
@@ -111,7 +111,7 @@ public final class WotValidationConfigPersistenceActor extends AbstractPersisten
                 ), getSelf());
             });
         } else if (command instanceof DeleteWotValidationConfig deleteCommand) {
-            final EntityId entityId = EntityId.of(EntityType.of(RESOURCE_TYPE), deleteCommand.getEntityId().toString());
+            final EntityId entityId = EntityId.of(EntityType.of(RESOURCE_TYPE), "test");
             final WotValidationConfigDeleted event = WotValidationConfigDeleted.of(
                     entityId,
                     entity,

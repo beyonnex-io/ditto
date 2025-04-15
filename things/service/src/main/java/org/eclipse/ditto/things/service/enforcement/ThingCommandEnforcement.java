@@ -80,6 +80,8 @@ import org.eclipse.ditto.things.model.signals.commands.query.RetrieveFeature;
 import org.eclipse.ditto.things.model.signals.commands.query.RetrieveThing;
 import org.eclipse.ditto.things.model.signals.commands.query.ThingQueryCommand;
 import org.eclipse.ditto.things.model.signals.commands.query.ThingQueryCommandResponse;
+import org.eclipse.ditto.things.model.devops.commands.WotValidationConfigCommand;
+import org.eclipse.ditto.things.model.devops.commands.WotValidationConfigCommandResponse;
 
 /**
  * Authorizes {@link ThingCommand}s and filters {@link ThingCommandResponse}s.
@@ -124,7 +126,9 @@ final class ThingCommandEnforcement
 
     @Override
     public boolean isApplicable(final Signal<?> signal) {
-        return signal instanceof ThingCommand<?> && !Command.isLiveCommand(signal);
+        return signal instanceof ThingCommand<?> &&
+                !(signal instanceof WotValidationConfigCommand) &&
+                !Command.isLiveCommand(signal);
     }
 
     @Override
@@ -203,7 +207,8 @@ final class ThingCommandEnforcement
 
     @Override
     public boolean shouldFilterCommandResponse(final ThingCommandResponse<?> commandResponse) {
-        return commandResponse instanceof ThingQueryCommandResponse<?>;
+        return commandResponse instanceof ThingQueryCommandResponse<?> &&
+                !(commandResponse instanceof WotValidationConfigCommandResponse);
     }
 
     @Override

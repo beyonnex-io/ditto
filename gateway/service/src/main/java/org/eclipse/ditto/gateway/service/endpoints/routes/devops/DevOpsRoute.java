@@ -53,14 +53,16 @@ import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonPointer;
 import org.eclipse.ditto.json.JsonValue;
-import org.eclipse.ditto.things.model.devops.ImmutableWoTValidationConfig;
+import org.eclipse.ditto.wot.validation.DefaultValidationContext;
+import org.eclipse.ditto.wot.model.WotValidationConfig;
+import org.eclipse.ditto.wot.model.ImmutableWotValidationConfig;
 import org.eclipse.ditto.things.model.devops.commands.DeleteWotValidationConfig;
 import org.eclipse.ditto.things.model.devops.commands.ModifyWotValidationConfig;
 import org.eclipse.ditto.things.model.devops.commands.RetrieveMergedWotValidationConfig;
 import org.eclipse.ditto.things.model.devops.commands.RetrieveWotValidationConfig;
+import org.eclipse.ditto.things.model.devops.commands.WotValidationConfigId;
 import org.eclipse.ditto.things.model.ThingId;
 import org.eclipse.ditto.things.model.ValidationContext;
-import org.eclipse.ditto.wot.validation.DefaultValidationContext;
 
 /**
  * Builder for creating Pekko HTTP routes for {@code /devops}.
@@ -153,29 +155,24 @@ public final class DevOpsRoute extends AbstractRoute {
         return rawPathPrefix(PathMatchers.slash().concat(PATH_VALIDATION_CONFIGS), () ->
                 concat(
                         pathEndOrSingleSlash(() -> 
-                            get(() -> {
-                                return handlePerRequest(ctx,
-                                        RetrieveWotValidationConfig.of(
-                                                dittoHeaders));
-                            })
+                            get(() -> handlePerRequest(ctx,
+                                    RetrieveWotValidationConfig.of(WotValidationConfigId.getInstance(), dittoHeaders)))
                         ),
                         pathPrefix(PathMatchers.segment(), scopeId ->
                                 concat(
-                                        get(() -> {
-                                            return handlePerRequest(ctx,
-                                                    RetrieveWotValidationConfig.of(dittoHeaders));
-                                        }),
+                                        get(() -> handlePerRequest(ctx,
+                                                RetrieveWotValidationConfig.of(WotValidationConfigId.getInstance(), dittoHeaders))),
                                         put(() -> extractDataBytes(payloadSource ->
                                                 handlePerRequest(ctx, dittoHeaders, payloadSource,
-                                                        json -> ModifyWotValidationConfig.of(
-                                                                ImmutableWoTValidationConfig.fromJson(JsonFactory.readFrom(json).asObject()).toJson(),
-                                                                dittoHeaders)
+                                                        json -> {
+                                                            final JsonObject validationConfigJson = JsonFactory.readFrom(json).asObject();
+                                                            final WotValidationConfig validationConfig = ImmutableWotValidationConfig.fromJson(validationConfigJson);
+                                                            return ModifyWotValidationConfig.of(WotValidationConfigId.getInstance(), null, dittoHeaders);
+                                                        }
                                                 )
                                         )),
-                                        delete(() -> {
-                                            return handlePerRequest(ctx,
-                                                    DeleteWotValidationConfig.of( dittoHeaders));
-                                        })
+                                        delete(() -> handlePerRequest(ctx,
+                                                DeleteWotValidationConfig.of(WotValidationConfigId.getInstance(), dittoHeaders)))
                                 )
                         )
                 )
@@ -349,11 +346,11 @@ public final class DevOpsRoute extends AbstractRoute {
     }
 
     private DittoHeaders createHeaders(final Map<String, String> queryParameters) {
-        final QueryParametersToHeadersMap queryParamsToHeaders = QueryParametersToHeadersMap.getInstance(httpConfig);
+        final QueryParametersToHeadersMap queryParamsToHeadersMap = QueryParametersToHeadersMap.getInstance(httpConfig);
 
         return DittoHeaders.newBuilder()
                 .randomCorrelationId()
-                .putHeaders(queryParamsToHeaders.apply(queryParameters))
+                .putHeaders(queryParamsToHeadersMap.apply(queryParameters))
                 .build();
     }
 
@@ -363,19 +360,4 @@ public final class DevOpsRoute extends AbstractRoute {
         Route build(RequestContext ctx, String serviceName, String instance, DittoHeaders dittoHeaders);
 
     }
-
-    /**
-     * Handle a command that extends Command interface but isn't being recognized by the compiler
-     */
-    private Route handleDevOpsCommand(final RequestContext ctx, final Object command) {
-        // Debug information to understand what type is coming through
-        System.out.println("Command class: " + command.getClass().getName());
-        
-        if (command instanceof Command<?>) {
-            return handlePerRequest(ctx, (Command<?>) command);
-        } else {
-            throw new IllegalArgumentException("Not a valid Command: " + command.getClass().getName());
-        }
-    }
-
 }

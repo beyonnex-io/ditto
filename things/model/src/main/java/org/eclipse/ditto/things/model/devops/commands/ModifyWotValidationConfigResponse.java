@@ -32,17 +32,17 @@ import org.eclipse.ditto.things.model.signals.commands.AbstractThingCommandRespo
 import org.eclipse.ditto.things.model.signals.commands.ThingCommandResponse;
 
 /**
- * Response to a {@link RetrieveWotValidationConfig} command.
+ * Response to a {@link ModifyWotValidationConfig} command.
  */
 @Immutable
-@JsonParsableCommandResponse(type = RetrieveWotValidationConfigResponse.TYPE)
-public final class RetrieveWotValidationConfigResponse extends AbstractThingCommandResponse<RetrieveWotValidationConfigResponse>
-        implements WotValidationConfigCommandResponse<RetrieveWotValidationConfigResponse>, WithEntity<RetrieveWotValidationConfigResponse> {
+@JsonParsableCommandResponse(type = ModifyWotValidationConfigResponse.TYPE)
+public final class ModifyWotValidationConfigResponse extends AbstractThingCommandResponse<ModifyWotValidationConfigResponse>
+        implements WotValidationConfigCommandResponse<ModifyWotValidationConfigResponse>, WithEntity<ModifyWotValidationConfigResponse> {
 
     /**
      * Name of the response.
      */
-    public static final String NAME = "retrieve";
+    public static final String NAME = "modify";
 
     /**
      * Type of this response.
@@ -51,28 +51,28 @@ public final class RetrieveWotValidationConfigResponse extends AbstractThingComm
 
     private final JsonValue validationConfig;
 
-    private RetrieveWotValidationConfigResponse(final ThingId thingId, final JsonValue validationConfig,
+    private ModifyWotValidationConfigResponse(final ThingId thingId, final JsonValue validationConfig,
             final DittoHeaders dittoHeaders) {
         super(TYPE, HttpStatus.OK, thingId, dittoHeaders);
         this.validationConfig = Objects.requireNonNull(validationConfig, "validationConfig");
     }
 
     /**
-     * Returns a new instance of {@code RetrieveWotValidationConfigResponse}.
+     * Returns a new instance of {@code ModifyWotValidationConfigResponse}.
      *
      * @param thingId the ID of the thing.
      * @param validationConfig the validation config.
      * @param dittoHeaders the headers of the response.
-     * @return a new RetrieveWotValidationConfigResponse.
+     * @return a new ModifyWotValidationConfigResponse.
      * @throws NullPointerException if any argument is {@code null}.
      */
-    public static RetrieveWotValidationConfigResponse of(final ThingId thingId, final JsonValue validationConfig,
+    public static ModifyWotValidationConfigResponse of(final ThingId thingId, final JsonValue validationConfig,
             final DittoHeaders dittoHeaders) {
-        return new RetrieveWotValidationConfigResponse(thingId, validationConfig, dittoHeaders);
+        return new ModifyWotValidationConfigResponse(thingId, validationConfig, dittoHeaders);
     }
 
     /**
-     * Creates a new {@code RetrieveWotValidationConfigResponse} from a JSON string.
+     * Creates a new {@code ModifyWotValidationConfigResponse} from a JSON string.
      *
      * @param jsonString the JSON string of which the response is to be created.
      * @param dittoHeaders the headers of the response.
@@ -82,13 +82,13 @@ public final class RetrieveWotValidationConfigResponse extends AbstractThingComm
      * @throws org.eclipse.ditto.json.JsonParseException if the passed in {@code jsonString} was not in the expected
      * format.
      */
-    public static RetrieveWotValidationConfigResponse fromJson(final String jsonString,
+    public static ModifyWotValidationConfigResponse fromJson(final String jsonString,
             final DittoHeaders dittoHeaders) {
         return fromJson(JsonObject.of(jsonString), dittoHeaders);
     }
 
     /**
-     * Creates a new {@code RetrieveWotValidationConfigResponse} from a JSON object.
+     * Creates a new {@code ModifyWotValidationConfigResponse} from a JSON object.
      *
      * @param jsonObject the JSON object of which the response is to be created.
      * @param dittoHeaders the headers of the response.
@@ -97,7 +97,7 @@ public final class RetrieveWotValidationConfigResponse extends AbstractThingComm
      * @throws org.eclipse.ditto.json.JsonParseException if the passed in {@code jsonObject} was not in the expected
      * format.
      */
-    public static RetrieveWotValidationConfigResponse fromJson(final JsonObject jsonObject,
+    public static ModifyWotValidationConfigResponse fromJson(final JsonObject jsonObject,
             final DittoHeaders dittoHeaders) {
         final ThingId thingId = ThingId.of(jsonObject.getValueOrThrow(ThingCommandResponse.JsonFields.JSON_THING_ID));
         final JsonValue validationConfig = jsonObject.getValueOrThrow(WotValidationConfigCommand.JsonFields.VALIDATION_CONFIG);
@@ -124,7 +124,7 @@ public final class RetrieveWotValidationConfigResponse extends AbstractThingComm
     }
 
     @Override
-    public RetrieveWotValidationConfigResponse setEntity(final JsonValue entity) {
+    public ModifyWotValidationConfigResponse setEntity(final JsonValue entity) {
         return of(getEntityId(), entity, getDittoHeaders());
     }
 
@@ -136,7 +136,7 @@ public final class RetrieveWotValidationConfigResponse extends AbstractThingComm
     }
 
     @Override
-    public RetrieveWotValidationConfigResponse setDittoHeaders(final DittoHeaders dittoHeaders) {
+    public ModifyWotValidationConfigResponse setDittoHeaders(final DittoHeaders dittoHeaders) {
         return of(getEntityId(), validationConfig, dittoHeaders);
     }
 
@@ -156,7 +156,7 @@ public final class RetrieveWotValidationConfigResponse extends AbstractThingComm
         if (!super.equals(o)) {
             return false;
         }
-        final RetrieveWotValidationConfigResponse that = (RetrieveWotValidationConfigResponse) o;
+        final ModifyWotValidationConfigResponse that = (ModifyWotValidationConfigResponse) o;
         return Objects.equals(validationConfig, that.validationConfig);
     }
 

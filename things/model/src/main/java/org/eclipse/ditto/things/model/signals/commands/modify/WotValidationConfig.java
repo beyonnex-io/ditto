@@ -13,12 +13,19 @@
 package org.eclipse.ditto.things.model.signals.commands.modify;
 
 import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Predicate;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
 import org.eclipse.ditto.json.JsonFactory;
+import org.eclipse.ditto.json.JsonField;
 import org.eclipse.ditto.json.JsonFieldDefinition;
 import org.eclipse.ditto.json.JsonObject;
+import org.eclipse.ditto.json.JsonObjectBuilder;
+import org.eclipse.ditto.json.JsonPointer;
+import org.eclipse.ditto.json.JsonValue;
 
 /**
  * Configuration for Thing-specific WoT validation.
@@ -218,11 +225,6 @@ public final class WotValidationConfig {
         return forbidNonModeledOutboxMessages;
     }
 
-    /**
-     * Returns a JSON representation of this configuration.
-     *
-     * @return the JSON representation.
-     */
     public JsonObject toJson() {
         return JsonFactory.newObjectBuilder()
                 .set(ENFORCE_THING_DESCRIPTION_MODIFICATION, enforceThingDescriptionModification)
@@ -238,7 +240,7 @@ public final class WotValidationConfig {
     }
 
     @Override
-    public boolean equals(final Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) {
             return true;
         }
@@ -259,15 +261,9 @@ public final class WotValidationConfig {
 
     @Override
     public int hashCode() {
-        return Objects.hash(enforceThingDescriptionModification,
-                enforceAttributes,
-                enforceInboxMessagesInput,
-                enforceInboxMessagesOutput,
-                enforceOutboxMessages,
-                forbidThingDescriptionDeletion,
-                forbidNonModeledAttributes,
-                forbidNonModeledInboxMessages,
-                forbidNonModeledOutboxMessages);
+        return Objects.hash(enforceThingDescriptionModification, enforceAttributes, enforceInboxMessagesInput,
+                enforceInboxMessagesOutput, enforceOutboxMessages, forbidThingDescriptionDeletion,
+                forbidNonModeledAttributes, forbidNonModeledInboxMessages, forbidNonModeledOutboxMessages);
     }
 
     @Override

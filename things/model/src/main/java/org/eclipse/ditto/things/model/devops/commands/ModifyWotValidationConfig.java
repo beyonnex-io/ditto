@@ -12,64 +12,70 @@
  */
 package org.eclipse.ditto.things.model.devops.commands;
 
-import static org.eclipse.ditto.base.model.common.ConditionChecker.checkNotNull;
-
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Predicate;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
-import org.eclipse.ditto.base.model.entity.id.EntityId;
-import org.eclipse.ditto.base.model.entity.id.WithEntityId;
+import org.eclipse.ditto.base.model.common.HttpStatus;
 import org.eclipse.ditto.base.model.entity.type.EntityType;
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
+import org.eclipse.ditto.base.model.json.FieldType;
 import org.eclipse.ditto.base.model.json.JsonParsableCommand;
 import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
-import org.eclipse.ditto.base.model.signals.commands.AbstractCommand;
+import org.eclipse.ditto.base.model.signals.commands.Command;
+import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonField;
 import org.eclipse.ditto.json.JsonFieldDefinition;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.json.JsonPointer;
+import org.eclipse.ditto.json.JsonValue;
+import org.eclipse.ditto.things.model.ThingConstants;
+import org.eclipse.ditto.wot.model.ImmutableWotValidationConfig;
 
 /**
- * Command which modifies the WoT validation configuration.
+ * Command which modifies the WoT validation config.
  */
 @Immutable
 @JsonParsableCommand(typePrefix = WotValidationConfigCommand.TYPE_PREFIX, name = ModifyWotValidationConfig.NAME)
-public final class ModifyWotValidationConfig extends AbstractCommand<ModifyWotValidationConfig>
-        implements WotValidationConfigCommand<ModifyWotValidationConfig>, WithEntityId {
+public final class ModifyWotValidationConfig extends AbstractWotValidationConfigCommand<ModifyWotValidationConfig>
+        implements WotValidationConfigCommand<ModifyWotValidationConfig> {
 
     /**
-     * Name of the command.
+     * Name of this command.
      */
-    public static final String NAME = "modify";
+    public static final String NAME = "modifyWotValidationConfig";
 
     /**
      * Type of this command.
      */
     public static final String TYPE = WotValidationConfigCommand.TYPE_PREFIX + NAME;
 
-    private static final EntityId DUMMY_ENTITY_ID = EntityId.of(EntityType.of("wot"), "validation:config");
-    private final JsonObject config;
+    private final ImmutableWotValidationConfig validationConfig;
 
-    private ModifyWotValidationConfig(final JsonObject config,
+    private ModifyWotValidationConfig(final WotValidationConfigId configId,
+            final ImmutableWotValidationConfig validationConfig,
             final DittoHeaders dittoHeaders) {
-        super(TYPE, dittoHeaders);
-        this.config = checkNotNull(config, "config");
+        super(TYPE, configId, dittoHeaders);
+        this.validationConfig = Objects.requireNonNull(validationConfig, "Validation Config");
     }
 
     /**
      * Creates a new {@code ModifyWotValidationConfig} command.
      *
-     * @param config the configuration to set.
+     * @param configId the ID of the config to modify.
+     * @param validationConfig the WoT validation config to modify.
      * @param dittoHeaders the headers of the command.
-     * @return the command.
+     * @return a new command for modifying the WoT validation config.
      * @throws NullPointerException if any argument is {@code null}.
      */
-    public static ModifyWotValidationConfig of(final JsonObject config,
+    public static ModifyWotValidationConfig of(final WotValidationConfigId configId,
+            final ImmutableWotValidationConfig validationConfig,
             final DittoHeaders dittoHeaders) {
-        return new ModifyWotValidationConfig(config, dittoHeaders);
+        return new ModifyWotValidationConfig(configId, validationConfig, dittoHeaders);
     }
 
     /**
@@ -78,26 +84,27 @@ public final class ModifyWotValidationConfig extends AbstractCommand<ModifyWotVa
      * @param jsonObject the JSON object of which the command is to be created.
      * @param dittoHeaders the headers of the command.
      * @return the command.
-     * @throws NullPointerException if {@code jsonObject} is {@code null}.
+     * @throws NullPointerException if any argument is {@code null}.
+     * @throws org.eclipse.ditto.json.JsonParseException if the passed in {@code jsonObject} was not in the expected
+     * format.
      */
-    public static ModifyWotValidationConfig fromJson(final JsonObject jsonObject,
-            final DittoHeaders dittoHeaders) {
-        final JsonObject config = jsonObject.getValueOrThrow(JsonFields.CONFIG);
-        return of(config, dittoHeaders);
+    public static ModifyWotValidationConfig fromJson(final JsonObject jsonObject, final DittoHeaders dittoHeaders) {
+        final JsonObject validationConfigJson = jsonObject.getValueOrThrow(JsonFields.VALIDATION_CONFIG);
+        final ImmutableWotValidationConfig validationConfig = ImmutableWotValidationConfig.fromJson(validationConfigJson);
+
+        return of(WotValidationConfigId.getInstance(), validationConfig, dittoHeaders);
     }
 
-    @Override
-    public EntityId getEntityId() {
-        return DUMMY_ENTITY_ID;
+    public Optional<JsonValue> getEntity() {
+        return Optional.of(validationConfig.toJson());
     }
 
-    /**
-     * Returns the configuration.
-     *
-     * @return the configuration.
-     */
-    public JsonObject getConfig() {
-        return config;
+    public Optional<JsonValue> getEntity(final JsonSchemaVersion schemaVersion) {
+        return getEntity();
+    }
+
+    public ModifyWotValidationConfig setEntity(final JsonValue entity) {
+        return new ModifyWotValidationConfig(getEntityId(), ImmutableWotValidationConfig.fromJson(entity.asObject()), getDittoHeaders());
     }
 
     @Override
@@ -106,65 +113,88 @@ public final class ModifyWotValidationConfig extends AbstractCommand<ModifyWotVa
     }
 
     @Override
-    public String getResourceType() {
-        return WotValidationConfigCommand.RESOURCE_TYPE;
-    }
-
-    @Override
-    protected void appendPayload(final JsonObjectBuilder jsonObjectBuilder,
-            final JsonSchemaVersion schemaVersion,
-            final Predicate<JsonField> predicate) {
-        jsonObjectBuilder.set(JsonFields.CONFIG, config);
-    }
-
-    @Override
-    public Category getCategory() {
-        return Category.MODIFY;
-    }
-
-    @Override
     public String getTypePrefix() {
         return WotValidationConfigCommand.TYPE_PREFIX;
     }
 
     @Override
+    public Command.Category getCategory() {
+        return Command.Category.MODIFY;
+    }
+
+    public EntityType getEntityType() {
+        return ThingConstants.ENTITY_TYPE;
+    }
+
+    public boolean changesAuthorization() {
+        return false;
+    }
+
+    @Override
+    protected void appendPayload(final JsonObjectBuilder jsonObjectBuilder, final JsonSchemaVersion schemaVersion,
+            final Predicate<JsonField> thePredicate) {
+        final Predicate<JsonField> predicate = schemaVersion.and(thePredicate);
+        jsonObjectBuilder.set(JsonFields.VALIDATION_CONFIG, validationConfig.toJson(), predicate);
+    }
+
+    @Override
     public ModifyWotValidationConfig setDittoHeaders(final DittoHeaders dittoHeaders) {
-        return of(config, dittoHeaders);
+        return of(getEntityId(), validationConfig, dittoHeaders);
+    }
+
+    @Override
+    public boolean equals(@Nullable final Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        if (!super.equals(obj)) {
+            return false;
+        }
+        final ModifyWotValidationConfig that = (ModifyWotValidationConfig) obj;
+        return Objects.equals(validationConfig, that.validationConfig);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), config);
-    }
-
-    @Override
-    public boolean equals(final Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        if (!super.equals(o)) {
-            return false;
-        }
-        final ModifyWotValidationConfig that = (ModifyWotValidationConfig) o;
-        return Objects.equals(config, that.config);
+        return Objects.hash(super.hashCode(), validationConfig);
     }
 
     @Override
     public String toString() {
         return getClass().getSimpleName() + " [" +
-                super.toString() +
-                ", config=" + config +
+                "configId=" + getEntityId() +
+                ", validationConfig=" + validationConfig +
+                ", dittoHeaders=" + getDittoHeaders() +
                 "]";
     }
 
     /**
-     * JSON field definitions.
+     * Returns the WoT validation config as a JSON object.
+     *
+     * @return the WoT validation config as a JSON object.
      */
-    static final class JsonFields {
-        static final JsonFieldDefinition<JsonObject> CONFIG =
-                JsonFieldDefinition.ofJsonObject("config");
+    public JsonObject getConfig() {
+        return validationConfig.toJson();
+    }
+
+    /**
+     * This class contains definitions for all specific fields of a {@code ModifyWotValidationConfig}'s JSON representation.
+     */
+    @Immutable
+    public static final class JsonFields {
+
+        /**
+         * JSON field containing the WoT validation config.
+         */
+        public static final JsonFieldDefinition<JsonObject> VALIDATION_CONFIG =
+                JsonFactory.newJsonObjectFieldDefinition("validationConfig", FieldType.REGULAR,
+                        JsonSchemaVersion.V_2);
+
+        private JsonFields() {
+            throw new AssertionError();
+        }
     }
 }

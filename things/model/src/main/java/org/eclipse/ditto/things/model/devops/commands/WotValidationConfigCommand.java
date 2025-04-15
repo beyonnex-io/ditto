@@ -12,8 +12,12 @@
  */
 package org.eclipse.ditto.things.model.devops.commands;
 
+import org.eclipse.ditto.base.model.json.FieldType;
+import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
 import org.eclipse.ditto.base.model.signals.commands.Command;
-import org.eclipse.ditto.things.model.signals.commands.ThingCommand;
+import org.eclipse.ditto.json.JsonFactory;
+import org.eclipse.ditto.json.JsonFieldDefinition;
+import org.eclipse.ditto.json.JsonValue;
 
 /**
  * Interface for all WoT validation config commands.
@@ -25,10 +29,34 @@ public interface WotValidationConfigCommand<T extends WotValidationConfigCommand
     /**
      * Type prefix of WoT validation config commands.
      */
-    String TYPE_PREFIX = ThingCommand.TYPE_PREFIX + "wot-validation-config:";
+    String TYPE_PREFIX = "wot.validation.config:";
 
     /**
      * Resource type of WoT validation config commands.
      */
     String RESOURCE_TYPE = "wot-validation-config";
+
+    /**
+     * This class contains definitions for all specific fields of a WoT validation config command's JSON representation.
+     */
+    class JsonFields {
+
+        /**
+         * JSON field containing the validation config.
+         */
+        public static final JsonFieldDefinition<JsonValue> VALIDATION_CONFIG =
+                JsonFactory.newJsonValueFieldDefinition("validationConfig", FieldType.REGULAR,
+                        JsonSchemaVersion.V_2);
+
+        /**
+         * JSON field containing the config ID.
+         */
+        public static final JsonFieldDefinition<String> CONFIG_ID =
+                JsonFactory.newStringFieldDefinition("configId", FieldType.REGULAR,
+                        JsonSchemaVersion.V_2);
+
+        private JsonFields() {
+            throw new AssertionError();
+        }
+    }
 } 

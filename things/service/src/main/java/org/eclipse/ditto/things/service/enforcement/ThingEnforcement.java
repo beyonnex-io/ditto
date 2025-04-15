@@ -27,6 +27,9 @@ import org.eclipse.ditto.policies.model.Policy;
 import org.eclipse.ditto.things.model.Thing;
 import org.eclipse.ditto.things.model.devops.commands.WotValidationConfigCommand;
 import org.eclipse.ditto.things.model.signals.commands.modify.CreateThing;
+import org.eclipse.ditto.things.model.signals.commands.exceptions.ThingNotAccessibleException;
+import org.eclipse.ditto.things.model.ThingId;
+import org.eclipse.ditto.things.model.signals.commands.ThingCommand;
 
 /**
  * Authorizes {@link Signal}s and filters {@link CommandResponse}s related to things by applying different included
@@ -67,6 +70,7 @@ public final class ThingEnforcement extends AbstractEnforcementReloaded<Signal<?
         } else {
             adaptedSignal = signal;
         }
+
         return enforcementStrategies.stream()
                 .filter(strategy -> strategy.isApplicable(adaptedSignal))
                 .findFirst()
@@ -80,16 +84,19 @@ public final class ThingEnforcement extends AbstractEnforcementReloaded<Signal<?
         return signal instanceof WotValidationConfigCommand<?>;
     }
 
-
     @Override
     public CompletionStage<Signal<?>> authorizeSignalWithMissingEnforcer(final Signal<?> signal) {
-        return enforcementStrategies.stream()
-                .filter(strategy -> strategy.isApplicable(signal))
-                .findFirst()
-                .map(strategy -> strategy.getEnforcement().authorizeSignalWithMissingEnforcer(signal))
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Unsupported signal to perform authorizeSignalWithMissingEnforcer: " + signal
-                ));
+        if (signal instanceof WotValidationConfigCommand) {
+            return CompletableFuture.completedFuture(signal);
+        }
+        if (signal instanceof ThingCommand<?> thingCommand) {
+            return CompletableFuture.failedStage(ThingNotAccessibleException.newBuilder(thingCommand.getEntityId())
+                    .dittoHeaders(signal.getDittoHeaders())
+                    .build());
+        }
+        return CompletableFuture.failedStage(new IllegalArgumentException(
+                "Unsupported signal to perform authorizeSignalWithMissingEnforcer: " + signal
+        ));
     }
 
     @Override

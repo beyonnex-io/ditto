@@ -12,35 +12,32 @@
  */
 package org.eclipse.ditto.things.model.devops.commands;
 
-import static org.eclipse.ditto.base.model.common.ConditionChecker.checkNotNull;
-
 import java.util.Objects;
 import java.util.function.Predicate;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
-import org.eclipse.ditto.base.model.entity.id.EntityId;
-import org.eclipse.ditto.base.model.entity.id.WithEntityId;
-import org.eclipse.ditto.base.model.entity.type.EntityType;
+import org.eclipse.ditto.base.model.common.HttpStatus;
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.base.model.json.JsonParsableCommand;
 import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
-import org.eclipse.ditto.base.model.signals.commands.AbstractCommand;
 import org.eclipse.ditto.base.model.signals.commands.Command;
+import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonField;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.json.JsonPointer;
-import org.eclipse.ditto.things.model.signals.commands.ThingCommand;
-import org.eclipse.ditto.things.model.devops.commands.WotValidationConfigCommand;
+import org.eclipse.ditto.things.model.ThingId;
+import org.eclipse.ditto.things.model.signals.commands.ThingCommandResponse;
 
 /**
- * Command which retrieves the WoT validation configuration.
+ * Command to retrieve a WoT validation config.
  */
 @Immutable
 @JsonParsableCommand(typePrefix = WotValidationConfigCommand.TYPE_PREFIX, name = RetrieveWotValidationConfig.NAME)
-public final class RetrieveWotValidationConfig extends AbstractCommand<RetrieveWotValidationConfig>
-        implements WotValidationConfigCommand<RetrieveWotValidationConfig>, WithEntityId {
+public final class RetrieveWotValidationConfig extends AbstractWotValidationConfigCommand<RetrieveWotValidationConfig>
+        implements WotValidationConfigCommand<RetrieveWotValidationConfig> {
 
     /**
      * Name of the command.
@@ -50,63 +47,38 @@ public final class RetrieveWotValidationConfig extends AbstractCommand<RetrieveW
     /**
      * Type of this command.
      */
-    public static final String TYPE = ThingCommand.TYPE_PREFIX + NAME;
+    public static final String TYPE = WotValidationConfigCommand.TYPE_PREFIX + NAME;
 
-    private static final EntityId DUMMY_ENTITY_ID = EntityId.of(EntityType.of("wot"), "validation:config");
-
-    private RetrieveWotValidationConfig(final DittoHeaders dittoHeaders) {
-        super(TYPE, dittoHeaders);
+    private RetrieveWotValidationConfig(final WotValidationConfigId configId, final DittoHeaders dittoHeaders) {
+        super(TYPE, configId, dittoHeaders);
     }
 
     /**
-     * Creates a new {@code RetrieveWotValidationConfig} command.
+     * Creates a new instance of {@code RetrieveWotValidationConfig}.
      *
+     * @param configId the ID of the validation config.
      * @param dittoHeaders the headers of the command.
-     * @return the command.
+     * @return the new instance.
      * @throws NullPointerException if any argument is {@code null}.
      */
-    public static RetrieveWotValidationConfig of(final DittoHeaders dittoHeaders) {
-        return new RetrieveWotValidationConfig(dittoHeaders);
+    public static RetrieveWotValidationConfig of(final WotValidationConfigId configId, final DittoHeaders dittoHeaders) {
+        Objects.requireNonNull(configId, "configId");
+        Objects.requireNonNull(dittoHeaders, "dittoHeaders");
+        return new RetrieveWotValidationConfig(configId, dittoHeaders);
     }
 
     /**
-     * Creates a new {@code RetrieveWotValidationConfig} from a JSON object.
+     * Creates a new instance of {@code RetrieveWotValidationConfig} from a JSON object.
      *
-     * @param jsonObject the JSON object of which the command is to be created.
+     * @param jsonObject the JSON object.
      * @param dittoHeaders the headers of the command.
-     * @return the command.
-     * @throws NullPointerException if {@code jsonObject} is {@code null}.
+     * @return the new instance.
+     * @throws NullPointerException if any argument is {@code null}.
+     * @throws org.eclipse.ditto.json.JsonParseException if the passed in {@code jsonObject} was not in the expected format.
      */
-    public static RetrieveWotValidationConfig fromJson(final JsonObject jsonObject,
-            final DittoHeaders dittoHeaders) {
-        return of(dittoHeaders);
-    }
-
-    @Override
-    public EntityId getEntityId() {
-        return DUMMY_ENTITY_ID;
-    }
-
-    @Override
-    public JsonPointer getResourcePath() {
-        return JsonPointer.empty();
-    }
-
-    @Override
-    public String getResourceType() {
-        return WotValidationConfigCommand.RESOURCE_TYPE;
-    }
-
-    @Override
-    protected void appendPayload(final JsonObjectBuilder jsonObjectBuilder,
-            final JsonSchemaVersion schemaVersion,
-            final Predicate<JsonField> predicate) {
-        // No payload to append
-    }
-
-    @Override
-    public Category getCategory() {
-        return Category.QUERY;
+    public static RetrieveWotValidationConfig fromJson(final JsonObject jsonObject, final DittoHeaders dittoHeaders) {
+        final WotValidationConfigId configId = WotValidationConfigId.getInstance();
+        return of(configId, dittoHeaders);
     }
 
     @Override
@@ -115,33 +87,47 @@ public final class RetrieveWotValidationConfig extends AbstractCommand<RetrieveW
     }
 
     @Override
+    public JsonPointer getResourcePath() {
+        return JsonPointer.of("/wot/validation/config");
+    }
+
+    @Override
+    public Command.Category getCategory() {
+        return Command.Category.QUERY;
+    }
+
+    @Override
     public RetrieveWotValidationConfig setDittoHeaders(final DittoHeaders dittoHeaders) {
-        return of(dittoHeaders);
+        return of(getEntityId(), dittoHeaders);
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(super.hashCode());
+    protected void appendPayload(final JsonObjectBuilder jsonObjectBuilder, final JsonSchemaVersion schemaVersion,
+            final Predicate<JsonField> thePredicate) {
+        // No additional payload to append
     }
 
     @Override
-    public boolean equals(final Object o) {
+    public boolean equals(@Nullable final Object o) {
         if (this == o) {
             return true;
         }
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        if (!super.equals(o)) {
-            return false;
-        }
-        return true;
+        final RetrieveWotValidationConfig that = (RetrieveWotValidationConfig) o;
+        return Objects.equals(getEntityId(), that.getEntityId());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getEntityId());
     }
 
     @Override
     public String toString() {
         return getClass().getSimpleName() + " [" +
-                super.toString() +
+                "configId=" + getEntityId() +
                 "]";
     }
 }
