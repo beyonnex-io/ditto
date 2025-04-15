@@ -166,8 +166,8 @@ public final class DevOpsRoute extends AbstractRoute {
                                                 handlePerRequest(ctx, dittoHeaders, payloadSource,
                                                         json -> {
                                                             final JsonObject validationConfigJson = JsonFactory.readFrom(json).asObject();
-                                                            final WotValidationConfig validationConfig = ImmutableWotValidationConfig.fromJson(validationConfigJson);
-                                                            return ModifyWotValidationConfig.of(WotValidationConfigId.getInstance(), null, dittoHeaders);
+                                                            final ImmutableWotValidationConfig validationConfig = org.eclipse.ditto.wot.model.ImmutableWotValidationConfig.fromJson(validationConfigJson);
+                                                            return ModifyWotValidationConfig.of(WotValidationConfigId.getInstance(), validationConfig, dittoHeaders);
                                                         }
                                                 )
                                         )),
