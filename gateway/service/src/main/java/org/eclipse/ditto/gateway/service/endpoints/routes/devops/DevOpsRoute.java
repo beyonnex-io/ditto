@@ -26,18 +26,10 @@ import org.apache.pekko.http.javadsl.server.RequestContext;
 import org.apache.pekko.http.javadsl.server.Route;
 import org.eclipse.ditto.base.api.common.RetrieveConfig;
 import org.eclipse.ditto.base.api.devops.ImmutableLoggerConfig;
-import org.eclipse.ditto.base.api.devops.LoggerConfig;
-import org.eclipse.ditto.base.api.devops.LoggingFacade;
-import org.eclipse.ditto.base.api.devops.signals.commands.AggregatedDevOpsCommandResponse;
 import org.eclipse.ditto.base.api.devops.signals.commands.ChangeLogLevel;
-import org.eclipse.ditto.base.api.devops.signals.commands.ChangeLogLevelResponse;
 import org.eclipse.ditto.base.api.devops.signals.commands.DevOpsCommand;
-import org.eclipse.ditto.base.api.devops.signals.commands.DevOpsCommandResponse;
-import org.eclipse.ditto.base.api.devops.signals.commands.DevOpsErrorResponse;
 import org.eclipse.ditto.base.api.devops.signals.commands.ExecutePiggybackCommand;
-import org.eclipse.ditto.base.api.devops.signals.commands.ExecutePiggybackCommandResponse;
 import org.eclipse.ditto.base.api.devops.signals.commands.RetrieveLoggerConfig;
-import org.eclipse.ditto.base.api.devops.signals.commands.RetrieveLoggerConfigResponse;
 import org.eclipse.ditto.base.model.common.ConditionChecker;
 import org.eclipse.ditto.base.model.exceptions.DittoJsonException;
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
@@ -53,16 +45,12 @@ import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonPointer;
 import org.eclipse.ditto.json.JsonValue;
-import org.eclipse.ditto.wot.validation.DefaultValidationContext;
-import org.eclipse.ditto.wot.model.WotValidationConfig;
-import org.eclipse.ditto.wot.model.ImmutableWotValidationConfig;
 import org.eclipse.ditto.things.model.devops.commands.DeleteWotValidationConfig;
 import org.eclipse.ditto.things.model.devops.commands.ModifyWotValidationConfig;
-import org.eclipse.ditto.things.model.devops.commands.RetrieveMergedWotValidationConfig;
 import org.eclipse.ditto.things.model.devops.commands.RetrieveWotValidationConfig;
-import org.eclipse.ditto.things.model.devops.commands.WotValidationConfigId;
-import org.eclipse.ditto.things.model.ThingId;
-import org.eclipse.ditto.things.model.ValidationContext;
+import org.eclipse.ditto.things.model.devops.commands.RetrieveMergedWotValidationConfig;
+import org.eclipse.ditto.wot.model.ImmutableWotValidationConfig;
+import org.eclipse.ditto.things.model.devops.WotValidationConfigId;
 
 /**
  * Builder for creating Pekko HTTP routes for {@code /devops}.
@@ -152,31 +140,27 @@ public final class DevOpsRoute extends AbstractRoute {
      * @return {@code /devops/wot/validationConfigs} route.
      */
     private Route wotRoutes(final RequestContext ctx, final DittoHeaders dittoHeaders) {
-        return rawPathPrefix(PathMatchers.slash().concat(PATH_VALIDATION_CONFIGS), () ->
-                concat(
-                        pathEndOrSingleSlash(() -> 
-                            get(() -> handlePerRequest(ctx,
-                                    RetrieveWotValidationConfig.of(WotValidationConfigId.getInstance(), dittoHeaders)))
-                        ),
-                        pathPrefix(PathMatchers.segment(), scopeId ->
-                                concat(
-                                        get(() -> handlePerRequest(ctx,
-                                                RetrieveWotValidationConfig.of(WotValidationConfigId.getInstance(), dittoHeaders))),
-                                        put(() -> extractDataBytes(payloadSource ->
-                                                handlePerRequest(ctx, dittoHeaders, payloadSource,
-                                                        json -> {
-                                                            final JsonObject validationConfigJson = JsonFactory.readFrom(json).asObject();
-                                                            final ImmutableWotValidationConfig validationConfig = org.eclipse.ditto.wot.model.ImmutableWotValidationConfig.fromJson(validationConfigJson);
-                                                            return ModifyWotValidationConfig.of(WotValidationConfigId.getInstance(), validationConfig, dittoHeaders);
-                                                        }
-                                                )
-                                        )),
-                                        delete(() -> handlePerRequest(ctx,
-                                                DeleteWotValidationConfig.of(WotValidationConfigId.getInstance(), dittoHeaders)))
-                                )
-                        )
-                )
-        );
+        return rawPathPrefix(PathMatchers.slash().concat(PATH_VALIDATION_CONFIGS), () -> concat(
+                pathEndOrSingleSlash(() ->
+                        get(() -> handlePerRequest(ctx, RetrieveWotValidationConfig.of(WotValidationConfigId.of("default"), dittoHeaders)))),
+                pathPrefix(PathMatchers.segment(), configId -> concat(
+                        pathEndOrSingleSlash(() -> concat(
+                                get(() -> handlePerRequest(ctx, RetrieveWotValidationConfig.of(WotValidationConfigId.of(configId), dittoHeaders))),
+                                put(() -> extractDataBytes(payloadSource ->
+                                        handlePerRequest(ctx, dittoHeaders, payloadSource,
+                                                json -> {
+                                                    final JsonObject validationConfigJson = JsonFactory.readFrom(json).asObject();
+                                                    final ImmutableWotValidationConfig validationConfig = ImmutableWotValidationConfig.fromJson(validationConfigJson);
+                                                    return ModifyWotValidationConfig.of(WotValidationConfigId.of(configId), validationConfig, dittoHeaders);
+                                                }
+                                        )
+                                ))
+                        )),
+                        path("merged", () ->
+                                get(() -> handlePerRequest(ctx, RetrieveMergedWotValidationConfig.of(WotValidationConfigId.of(configId), dittoHeaders)))),
+                        delete(() -> handlePerRequest(ctx, DeleteWotValidationConfig.of(WotValidationConfigId.of(configId), dittoHeaders)))
+                ))
+        ));
     }
 
     /*

@@ -91,6 +91,7 @@ import org.eclipse.ditto.things.service.persistence.actors.enrichment.EnrichSign
 import org.eclipse.ditto.thingsearch.api.ThingsSearchConstants;
 import org.eclipse.ditto.things.model.devops.commands.WotValidationConfigCommand;
 import org.eclipse.ditto.json.JsonObject;
+import org.eclipse.ditto.things.model.devops.exceptions.WotValidationConfigNotAccessibleException;
 
 /**
  * Supervisor for {@link ThingPersistenceActor} which means it will create, start and watch it as child actor.
@@ -496,7 +497,6 @@ public final class ThingSupervisorActor extends AbstractPersistenceSupervisor<Th
 
     @Override
     protected boolean applyPersistedEventFilter(final Event<?> event, final SubscribeForPersistedEvents subscribe) {
-
         if (subscribe.getFilter().isEmpty()) {
             return true;
         } else if (event instanceof ThingEvent<?> thingEvent) {
@@ -642,7 +642,7 @@ public final class ThingSupervisorActor extends AbstractPersistenceSupervisor<Th
         } else {
             log.warning("Cannot handle WoT validation config command as persistence actor is not available: {}", command);
             getSender().tell(ThingErrorResponse.of(
-                ThingNotAccessibleException.newBuilder(command.getEntityId())
+                WotValidationConfigNotAccessibleException.newBuilder(command.getEntityId())
                     .dittoHeaders(command.getDittoHeaders())
                     .message("Cannot handle WoT validation config command as persistence actor is not available")
                     .build()), getSelf());

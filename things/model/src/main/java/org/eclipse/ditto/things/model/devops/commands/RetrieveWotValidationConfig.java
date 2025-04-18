@@ -23,13 +23,11 @@ import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.base.model.json.JsonParsableCommand;
 import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
 import org.eclipse.ditto.base.model.signals.commands.Command;
-import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonField;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.json.JsonPointer;
-import org.eclipse.ditto.things.model.ThingId;
-import org.eclipse.ditto.things.model.signals.commands.ThingCommandResponse;
+import org.eclipse.ditto.things.model.devops.WotValidationConfigId;
 
 /**
  * Command to retrieve a WoT validation config.
@@ -77,7 +75,8 @@ public final class RetrieveWotValidationConfig extends AbstractWotValidationConf
      * @throws org.eclipse.ditto.json.JsonParseException if the passed in {@code jsonObject} was not in the expected format.
      */
     public static RetrieveWotValidationConfig fromJson(final JsonObject jsonObject, final DittoHeaders dittoHeaders) {
-        final WotValidationConfigId configId = WotValidationConfigId.getInstance();
+        final String configIdString = jsonObject.getValueOrThrow(WotValidationConfigCommand.JsonFields.CONFIG_ID);
+        final WotValidationConfigId configId = WotValidationConfigId.of(configIdString);
         return of(configId, dittoHeaders);
     }
 

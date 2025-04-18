@@ -15,11 +15,16 @@ package org.eclipse.ditto.wot.validation.config;
 import static org.eclipse.ditto.base.model.common.ConditionChecker.checkNotNull;
 
 import java.util.Objects;
+import java.util.function.Predicate;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
+import org.eclipse.ditto.base.model.json.FieldType;
+import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
+import org.eclipse.ditto.json.JsonField;
 import org.eclipse.ditto.json.JsonFieldDefinition;
+import org.eclipse.ditto.json.JsonFieldSelector;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.json.JsonFactory;
@@ -165,6 +170,16 @@ public final class ImmutableTmValidationConfig implements TmValidationConfig {
                 ", thingValidationConfig=" + thingValidationConfig +
                 ", featureValidationConfig=" + featureValidationConfig +
                 "]";
+    }
+
+    @Override
+    public JsonObject toJson(final JsonSchemaVersion schemaVersion, final Predicate<JsonField> predicate) {
+        return  toJson(JsonSchemaVersion.LATEST, predicate);
+    }
+
+    @Override
+    public JsonObject toJson(final JsonSchemaVersion schemaVersion, final JsonFieldSelector fieldSelector) {
+        return toJson(FieldType.notHidden());
     }
 
     /**

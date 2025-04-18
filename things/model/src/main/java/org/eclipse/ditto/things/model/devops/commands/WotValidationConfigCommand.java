@@ -19,6 +19,7 @@ import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonFieldDefinition;
 import org.eclipse.ditto.json.JsonValue;
 import org.eclipse.ditto.things.model.ThingId;
+import org.eclipse.ditto.things.model.devops.WotValidationConfigId;
 import org.eclipse.ditto.things.model.signals.commands.ThingErrorResponse;
 import org.eclipse.ditto.things.model.signals.commands.exceptions.ThingNotAccessibleException;
 
@@ -70,15 +71,15 @@ public interface WotValidationConfigCommand<T extends WotValidationConfigCommand
      */
     default ThingErrorResponse getNotApplicableErrorResponse() {
         return ThingErrorResponse.of(ThingNotAccessibleException
-                .newBuilder(getEntityId())
+                .newBuilder(ThingId.of(getEntityId().toString()))
                 .dittoHeaders(getDittoHeaders())
                 .build());
     }
 
     /**
-     * Returns the identifier of the Thing.
+     * Returns the identifier of the WoT validation config.
      *
-     * @return the identifier of the Thing.
+     * @return the identifier of the WoT validation config.
      */
-    ThingId getEntityId();
+    WotValidationConfigId getEntityId();
 } 

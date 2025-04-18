@@ -34,6 +34,7 @@ import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.json.JsonPointer;
 import org.eclipse.ditto.json.JsonValue;
 import org.eclipse.ditto.things.model.ThingConstants;
+import org.eclipse.ditto.things.model.devops.WotValidationConfigId;
 import org.eclipse.ditto.wot.model.ImmutableWotValidationConfig;
 
 /**
@@ -91,8 +92,9 @@ public final class ModifyWotValidationConfig extends AbstractWotValidationConfig
     public static ModifyWotValidationConfig fromJson(final JsonObject jsonObject, final DittoHeaders dittoHeaders) {
         final JsonObject validationConfigJson = jsonObject.getValueOrThrow(JsonFields.VALIDATION_CONFIG);
         final ImmutableWotValidationConfig validationConfig = ImmutableWotValidationConfig.fromJson(validationConfigJson);
+        final String configIdString = jsonObject.getValueOrThrow(WotValidationConfigCommand.JsonFields.CONFIG_ID);
 
-        return of(WotValidationConfigId.getInstance(), validationConfig, dittoHeaders);
+        return of(WotValidationConfigId.of(configIdString), validationConfig, dittoHeaders);
     }
 
     public Optional<JsonValue> getEntity() {

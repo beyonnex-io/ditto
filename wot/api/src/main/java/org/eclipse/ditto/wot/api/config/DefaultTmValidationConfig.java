@@ -14,15 +14,19 @@ package org.eclipse.ditto.wot.api.config;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
-import org.eclipse.ditto.base.model.json.Jsonifiable;
+import org.eclipse.ditto.base.model.json.FieldType;
+import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
 import org.eclipse.ditto.internal.utils.config.ConfigWithFallback;
 import org.eclipse.ditto.internal.utils.config.DefaultScopedConfig;
 import org.eclipse.ditto.internal.utils.config.KnownConfigValue;
 import org.eclipse.ditto.internal.utils.config.ScopedConfig;
+import org.eclipse.ditto.json.JsonField;
+import org.eclipse.ditto.json.JsonFieldSelector;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.wot.validation.ValidationContext;
@@ -195,6 +199,16 @@ final class DefaultTmValidationConfig implements TmValidationConfig {
                 ", featureValidationConfig=" + featureValidationConfig +
                 ", scopedConfig=" + scopedConfig +
                 "]";
+    }
+
+    @Override
+    public JsonObject toJson(final JsonSchemaVersion schemaVersion, final Predicate<JsonField> predicate) {
+        return  toJson(JsonSchemaVersion.LATEST, predicate);
+    }
+
+    @Override
+    public JsonObject toJson(final JsonSchemaVersion schemaVersion, final JsonFieldSelector fieldSelector) {
+        return toJson(FieldType.notHidden());
     }
 
     /**
