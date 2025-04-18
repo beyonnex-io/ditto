@@ -72,7 +72,10 @@ import org.eclipse.ditto.rql.query.things.ThingPredicateVisitor;
 import org.eclipse.ditto.things.api.ThingsMessagingConstants;
 import org.eclipse.ditto.things.model.Thing;
 import org.eclipse.ditto.things.model.ThingId;
+import org.eclipse.ditto.things.model.devops.events.WotValidationConfigEvent;
 import org.eclipse.ditto.things.model.signals.commands.ThingCommandResponse;
+import org.eclipse.ditto.things.model.signals.commands.ThingErrorResponse;
+import org.eclipse.ditto.things.model.signals.commands.exceptions.ThingNotAccessibleException;
 import org.eclipse.ditto.things.model.signals.commands.exceptions.ThingUnavailableException;
 import org.eclipse.ditto.things.model.signals.commands.modify.CreateThing;
 import org.eclipse.ditto.things.model.signals.commands.query.RetrieveThing;
@@ -86,6 +89,8 @@ import org.eclipse.ditto.things.service.enforcement.ThingEnforcerActor;
 import org.eclipse.ditto.things.service.enforcement.ThingPolicyCreated;
 import org.eclipse.ditto.things.service.persistence.actors.enrichment.EnrichSignalWithPreDefinedExtraFields;
 import org.eclipse.ditto.thingsearch.api.ThingsSearchConstants;
+import org.eclipse.ditto.things.model.devops.commands.WotValidationConfigCommand;
+import org.eclipse.ditto.json.JsonObject;
 
 /**
  * Supervisor for {@link ThingPersistenceActor} which means it will create, start and watch it as child actor.
@@ -484,6 +489,7 @@ public final class ThingSupervisorActor extends AbstractPersistenceSupervisor<Th
                 })
                 .match(RollbackCreatedPolicy.class, this::handleRollbackCreatedPolicy)
                 .match(EnrichSignalWithPreDefinedExtraFields.class, this::enrichSignalWithPreDefinedExtraFields)
+                .match(WotValidationConfigCommand.class, this::handleWotValidationConfigCommand)
                 .build()
                 .orElse(super.activeBehaviour(matchProcessNextTwinMessageBehavior, matchAnyBehavior));
     }
@@ -505,6 +511,23 @@ public final class ThingSupervisorActor extends AbstractPersistenceSupervisor<Th
                 log.info("Got 'DittoRuntimeException' when parsing 'filter' during " +
                                 "'SubscribeForPersistedEvents' processing: {}: <{}>", e.getClass().getSimpleName(),
                         e.getMessage());
+                return false;
+            }
+        } else if (event instanceof WotValidationConfigEvent wotEvent) {
+            log.debug("Filtering WoT validation config event: {}", event);
+            try {
+                final Criteria criteria = subscribe.getFilter()
+                        .map(f -> parseCriteria(f, subscribe.getDittoHeaders()))
+                        .orElse(null);
+                final JsonObject eventJson = JsonObject.newBuilder()
+                        .set("entityId", wotEvent.getEntityId().toString())
+                        .set("config", wotEvent.getConfig().toJson())
+                        .build();
+                return criteria != null ? criteria.accept(new WotValidationConfigCriteriaVisitor(eventJson)) : true;
+            } catch (final DittoRuntimeException e) {
+                log.info("Got 'DittoRuntimeException' when parsing 'filter' during " +
+                                "'SubscribeForPersistedEvents' processing for WoT validation config: {}: <{}>",
+                        e.getClass().getSimpleName(), e.getMessage());
                 return false;
             }
         } else {
@@ -610,6 +633,19 @@ public final class ThingSupervisorActor extends AbstractPersistenceSupervisor<Th
          */
         private void completeInitialResponse() {
             completeInitialResponse(null);
+        }
+    }
+
+    private void handleWotValidationConfigCommand(final WotValidationConfigCommand command) {
+        if (persistenceActorChild != null) {
+            persistenceActorChild.tell(command, getSender());
+        } else {
+            log.warning("Cannot handle WoT validation config command as persistence actor is not available: {}", command);
+            getSender().tell(ThingErrorResponse.of(
+                ThingNotAccessibleException.newBuilder(command.getEntityId())
+                    .dittoHeaders(command.getDittoHeaders())
+                    .message("Cannot handle WoT validation config command as persistence actor is not available")
+                    .build()), getSelf());
         }
     }
 }

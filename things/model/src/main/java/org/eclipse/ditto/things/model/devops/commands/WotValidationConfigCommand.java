@@ -18,6 +18,9 @@ import org.eclipse.ditto.base.model.signals.commands.Command;
 import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonFieldDefinition;
 import org.eclipse.ditto.json.JsonValue;
+import org.eclipse.ditto.things.model.ThingId;
+import org.eclipse.ditto.things.model.signals.commands.ThingErrorResponse;
+import org.eclipse.ditto.things.model.signals.commands.exceptions.ThingNotAccessibleException;
 
 /**
  * Interface for all WoT validation config commands.
@@ -59,4 +62,23 @@ public interface WotValidationConfigCommand<T extends WotValidationConfigCommand
             throw new AssertionError();
         }
     }
+
+    /**
+     * Returns an error response indicating that the command is not applicable.
+     *
+     * @return the error response.
+     */
+    default ThingErrorResponse getNotApplicableErrorResponse() {
+        return ThingErrorResponse.of(ThingNotAccessibleException
+                .newBuilder(getEntityId())
+                .dittoHeaders(getDittoHeaders())
+                .build());
+    }
+
+    /**
+     * Returns the identifier of the Thing.
+     *
+     * @return the identifier of the Thing.
+     */
+    ThingId getEntityId();
 } 
