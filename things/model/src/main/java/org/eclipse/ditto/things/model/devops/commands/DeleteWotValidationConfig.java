@@ -18,6 +18,7 @@ import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
+import org.eclipse.ditto.base.model.entity.type.EntityType;
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.base.model.json.JsonParsableCommand;
 import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
@@ -27,6 +28,7 @@ import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.json.JsonPointer;
 import org.eclipse.ditto.things.model.devops.WotValidationConfigId;
+
 
 /**
  * Command to delete a WoT validation config.
@@ -92,6 +94,11 @@ public final class DeleteWotValidationConfig extends AbstractWotValidationConfig
     @Override
     public Command.Category getCategory() {
         return Command.Category.DELETE;
+    }
+
+    @Override
+    public EntityType getEntityType() {
+        return EntityType.of("wot-validation-config");
     }
 
     @Override

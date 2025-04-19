@@ -22,16 +22,18 @@ import org.eclipse.ditto.things.model.ThingId;
 import org.eclipse.ditto.things.model.devops.WotValidationConfigId;
 import org.eclipse.ditto.things.model.signals.commands.ThingErrorResponse;
 import org.eclipse.ditto.things.model.signals.commands.exceptions.ThingNotAccessibleException;
+import org.eclipse.ditto.base.model.entity.type.EntityType;
 
 /**
- * Interface for all WoT validation config commands.
+ * Base interface for all commands which are handled by the WoT validation config persistence.
  *
  * @param <T> the type of the implementing class.
+ * @since 3.5.0
  */
 public interface WotValidationConfigCommand<T extends WotValidationConfigCommand<T>> extends Command<T> {
 
     /**
-     * Type prefix of WoT validation config commands.
+     * Type Prefix of WoT validation config commands.
      */
     String TYPE_PREFIX = "wot.validation.config:";
 
@@ -77,9 +79,18 @@ public interface WotValidationConfigCommand<T extends WotValidationConfigCommand
     }
 
     /**
-     * Returns the identifier of the WoT validation config.
+     * Returns the ID of the WoT validation config.
      *
-     * @return the identifier of the WoT validation config.
+     * @return the ID.
      */
     WotValidationConfigId getEntityId();
+
+    /**
+     * Returns the entity type of the WoT validation config.
+     *
+     * @return the entity type.
+     */
+    default EntityType getEntityType() {
+        return EntityType.of(RESOURCE_TYPE);
+    }
 } 

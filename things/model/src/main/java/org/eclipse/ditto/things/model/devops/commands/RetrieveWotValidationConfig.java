@@ -19,6 +19,7 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
 import org.eclipse.ditto.base.model.common.HttpStatus;
+import org.eclipse.ditto.base.model.entity.type.EntityType;
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.base.model.json.JsonParsableCommand;
 import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
@@ -93,6 +94,11 @@ public final class RetrieveWotValidationConfig extends AbstractWotValidationConf
     @Override
     public Command.Category getCategory() {
         return Command.Category.QUERY;
+    }
+
+    @Override
+    public EntityType getEntityType() {
+        return EntityType.of("wot-validation-config");
     }
 
     @Override

@@ -125,7 +125,7 @@ public final class ModifyWotValidationConfig extends AbstractWotValidationConfig
     }
 
     public EntityType getEntityType() {
-        return ThingConstants.ENTITY_TYPE;
+        return EntityType.of("wot-validation-config");
     }
 
     public boolean changesAuthorization() {
