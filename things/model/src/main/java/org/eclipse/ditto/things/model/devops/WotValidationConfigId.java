@@ -1,0 +1,133 @@
+/*
+ * Copyright (c) 2025 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
+package org.eclipse.ditto.things.model.devops;
+
+import java.util.Objects;
+
+import javax.annotation.concurrent.Immutable;
+
+import org.eclipse.ditto.base.model.entity.id.AbstractNamespacedEntityId;
+import org.eclipse.ditto.base.model.entity.id.EntityId;
+import org.eclipse.ditto.base.model.entity.id.NamespacedEntityId;
+import org.eclipse.ditto.base.model.entity.id.TypedEntityId;
+import org.eclipse.ditto.base.model.entity.type.EntityType;
+import org.eclipse.ditto.base.model.json.Jsonifiable;
+import org.eclipse.ditto.json.JsonFactory;
+import org.eclipse.ditto.json.JsonObject;
+import org.eclipse.ditto.json.JsonValue;
+import org.eclipse.ditto.json.JsonFieldDefinition;
+
+/**
+ * Java representation of a WoT validation config ID.
+ */
+@Immutable
+@TypedEntityId(type = "wot-validation-config")
+public final class WotValidationConfigId extends AbstractNamespacedEntityId implements EntityId, Jsonifiable<JsonObject> {
+
+    private static final EntityType ENTITY_TYPE = EntityType.of("wot-validation-config");
+    private final NamespacedEntityId id;
+    private static final JsonFieldDefinition<String> ID_FIELD =
+            JsonFactory.newStringFieldDefinition("id");
+
+    private WotValidationConfigId(final NamespacedEntityId namespacedEntityId) {
+        super(ENTITY_TYPE, namespacedEntityId);
+        this.id = namespacedEntityId;
+    }
+
+    /**
+     * Returns a WoT validation config ID based on the given ID.
+     *
+     * @param configId the ID of the config.
+     * @return the WoT validation config ID.
+     * @throws NullPointerException if {@code configId} is {@code null}.
+     * @throws IllegalArgumentException if {@code configId} is empty.
+     * @throws org.eclipse.ditto.base.model.entity.id.NamespacedEntityIdInvalidException if {@code configId} is not a valid namespaced ID.
+     */
+    public static WotValidationConfigId of(final CharSequence configId) {
+        final String id = configId.toString();
+        if (id.isEmpty()) {
+            throw new IllegalArgumentException("The config ID must not be empty.");
+        }
+        return new WotValidationConfigId(new AbstractNamespacedEntityId(ENTITY_TYPE, id) {
+            @Override
+            public String toString() {
+                return id;
+            }
+        });
+    }
+
+    /**
+     * Returns a WoT validation config ID based on the given namespace and name.
+     *
+     * @param namespace the namespace of the config.
+     * @param name the name of the config.
+     * @return the WoT validation config ID.
+     * @throws NullPointerException if any argument is {@code null}.
+     * @throws IllegalArgumentException if any argument is empty.
+     */
+    public static WotValidationConfigId of(final String namespace, final String name) {
+        if (namespace == null || namespace.isEmpty()) {
+            throw new IllegalArgumentException("The namespace must not be empty.");
+        }
+        if (name == null || name.isEmpty()) {
+            throw new IllegalArgumentException("The name must not be empty.");
+        }
+        final String id = namespace + ":" + name;
+        return new WotValidationConfigId(new AbstractNamespacedEntityId(ENTITY_TYPE, id) {
+            @Override
+            public String toString() {
+                return id;
+            }
+        });
+    }
+
+    /**
+     * The global WoT validation config id.
+     */
+    public static final WotValidationConfigId GLOBAL = WotValidationConfigId.of("ditto:global");
+    public static final WotValidationConfigId MERGED = WotValidationConfigId.of("ditto:merged");
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final WotValidationConfigId that = (WotValidationConfigId) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+
+    @Override
+    public String toString() {
+        return id.toString();
+    }
+
+    @Override
+    public JsonObject toJson() {
+        return JsonFactory.newObjectBuilder()
+                .set(ID_FIELD, id.toString())
+                .build();
+    }
+
+    public static WotValidationConfigId fromJson(final JsonObject jsonObject) {
+        final String id = jsonObject.getValueOrThrow(ID_FIELD);
+        return WotValidationConfigId.of(id);
+    }
+}

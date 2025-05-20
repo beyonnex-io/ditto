@@ -1,0 +1,211 @@
+/*
+ * Copyright (c) 2025 Contributors to the Eclipse Foundation
+ *
+ * See the NOTICE file(s) distributed with this work for additional
+ * information regarding copyright ownership.
+ *
+ * This program and the accompanying materials are made available under the
+ * terms of the Eclipse Public License 2.0 which is available at
+ * http://www.eclipse.org/legal/epl-2.0
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
+package org.eclipse.ditto.things.model.devops;
+
+import org.eclipse.ditto.base.model.json.Jsonifiable;
+import org.eclipse.ditto.json.JsonFactory;
+import org.eclipse.ditto.json.JsonFieldDefinition;
+import org.eclipse.ditto.json.JsonObject;
+import org.eclipse.ditto.json.JsonObjectBuilder;
+import org.eclipse.ditto.base.model.json.FieldType;
+import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
+
+import javax.annotation.concurrent.Immutable;
+import java.util.Objects;
+import java.util.Optional;
+import javax.annotation.Nullable;
+
+/**
+ * Immutable value object representing thing-level forbid configuration for WoT (Web of Things) validation.
+ * <p>
+ * This class encapsulates configuration settings for forbidding thing-level validation rules.
+ * Instances are immutable and thread-safe.
+ * </p>
+ *
+ * @since 3.8.0
+ */
+@Immutable
+public final class ImmutableThingValidationForbidConfig implements Jsonifiable<JsonObject> {
+
+
+    private static final JsonFieldDefinition<Boolean> THING_DESCRIPTION_DELETION =
+            JsonFactory.newBooleanFieldDefinition("thingDescriptionDeletion", FieldType.REGULAR, JsonSchemaVersion.V_2);
+    private static final JsonFieldDefinition<Boolean> NON_MODELED_PROPERTIES =
+            JsonFactory.newBooleanFieldDefinition("nonModeledProperties", FieldType.REGULAR, JsonSchemaVersion.V_2);
+    private static final JsonFieldDefinition<Boolean> NON_MODELED_INBOX_MESSAGES =
+            JsonFactory.newBooleanFieldDefinition("nonModeledInboxMessages", FieldType.REGULAR, JsonSchemaVersion.V_2);
+    private static final JsonFieldDefinition<Boolean> NON_MODELED_OUTBOX_MESSAGES =
+            JsonFactory.newBooleanFieldDefinition("nonModeledOutboxMessages", FieldType.REGULAR, JsonSchemaVersion.V_2);
+
+    @Nullable private final Boolean thingDescriptionDeletion;
+    @Nullable private final Boolean nonModeledProperties;
+    @Nullable private final Boolean nonModeledInboxMessages;
+    @Nullable private final Boolean nonModeledOutboxMessages;
+
+    private ImmutableThingValidationForbidConfig(
+            @Nullable final Boolean thingDescriptionDeletion,
+            @Nullable final Boolean nonModeledProperties,
+            @Nullable final Boolean nonModeledInboxMessages,
+            @Nullable final Boolean nonModeledOutboxMessages) {
+        this.thingDescriptionDeletion = thingDescriptionDeletion;
+        this.nonModeledProperties = nonModeledProperties;
+        this.nonModeledInboxMessages = nonModeledInboxMessages;
+        this.nonModeledOutboxMessages = nonModeledOutboxMessages;
+    }
+
+    /**
+     * Creates a new instance of {@code ImmutableThingForbidConfig}.
+     *
+     * @param thingDescriptionDeletion whether to forbid thing description deletion
+     * @param nonModeledProperties whether to forbid non-modeled properties
+     * @param nonModeledInboxMessages whether to forbid non-modeled inbox messages
+     * @param nonModeledOutboxMessages whether to forbid non-modeled outbox messages
+     * @return a new instance with the specified values
+     */
+    public static ImmutableThingValidationForbidConfig of(
+            @Nullable final Boolean thingDescriptionDeletion,
+            @Nullable final Boolean nonModeledProperties,
+            @Nullable final Boolean nonModeledInboxMessages,
+            @Nullable final Boolean nonModeledOutboxMessages) {
+        return new ImmutableThingValidationForbidConfig(
+                thingDescriptionDeletion,
+                nonModeledProperties,
+                nonModeledInboxMessages,
+                nonModeledOutboxMessages);
+    }
+
+    /**
+     * Returns whether thing description deletion is forbidden.
+     *
+     * @return an optional containing whether thing description deletion is forbidden
+     */
+    public Optional<Boolean> isThingDescriptionDeletion() {
+        return Optional.ofNullable(thingDescriptionDeletion);
+    }
+
+
+    /**
+     * Returns whether non-modeled properties are forbidden.
+     *
+     * @return an optional containing whether non-modeled properties are forbidden
+     */
+    public Optional<Boolean> isNonModeledProperties() {
+        return Optional.ofNullable(nonModeledProperties);
+    }
+
+
+    /**
+     * Returns whether non-modeled inbox messages are forbidden.
+     *
+     * @return an optional containing whether non-modeled inbox messages are forbidden
+     */
+    public Optional<Boolean> isNonModeledInboxMessages() {
+        return Optional.ofNullable(nonModeledInboxMessages);
+    }
+
+    /**
+     * Returns whether non-modeled outbox messages are forbidden.
+     *
+     * @return an optional containing whether non-modeled outbox messages are forbidden
+     */
+    public Optional<Boolean> isNonModeledOutboxMessages() {
+        return Optional.ofNullable(nonModeledOutboxMessages);
+    }
+
+    @Override
+    public JsonObject toJson() {
+        final JsonObjectBuilder builder = JsonFactory.newObjectBuilder();
+        isThingDescriptionDeletion().ifPresent(value -> builder.set(THING_DESCRIPTION_DELETION, value));
+        isNonModeledProperties().ifPresent(value -> builder.set(NON_MODELED_PROPERTIES, value));
+        isNonModeledInboxMessages().ifPresent(value -> builder.set(NON_MODELED_INBOX_MESSAGES, value));
+        isNonModeledOutboxMessages().ifPresent(value -> builder.set(NON_MODELED_OUTBOX_MESSAGES, value));
+        return builder.build();
+    }
+
+    /**
+     * Creates a new instance of {@code ImmutableThingForbidConfig} from a JSON object.
+     * The JSON object should contain the following fields:
+     * <ul>
+     *     <li>{@code thingDescriptionDeletion} (optional): Whether to forbid thing description deletion</li>
+     *     <li>{@code nonModeledThings} (optional): Whether to forbid non-modeled things</li>
+     *     <li>{@code nonModeledProperties} (optional): Whether to forbid non-modeled properties</li>
+     *     <li>{@code nonModeledDesiredProperties} (optional): Whether to forbid non-modeled desired properties</li>
+     *     <li>{@code nonModeledInboxMessages} (optional): Whether to forbid non-modeled inbox messages</li>
+     *     <li>{@code nonModeledOutboxMessages} (optional): Whether to forbid non-modeled outbox messages</li>
+     * </ul>
+     *
+     * @param jsonObject the JSON object to create the configuration from
+     * @return a new instance created from the JSON object
+     * @throws NullPointerException if {@code jsonObject} is {@code null}
+     * @throws IllegalArgumentException if the JSON object is invalid
+     */
+    public static ImmutableThingValidationForbidConfig fromJson(final JsonObject jsonObject) {
+        if (jsonObject == null) {
+            throw new IllegalArgumentException("JSON object must not be null");
+        }
+
+
+        final Boolean thingDescriptionDeletion = jsonObject.getValue(THING_DESCRIPTION_DELETION)
+                .orElse(null);
+
+        final Boolean nonModeledProperties = jsonObject.getValue(NON_MODELED_PROPERTIES)
+                .orElse(null);
+
+        final Boolean nonModeledInboxMessages = jsonObject.getValue(NON_MODELED_INBOX_MESSAGES)
+                .orElse(null);
+
+        final Boolean nonModeledOutboxMessages = jsonObject.getValue(NON_MODELED_OUTBOX_MESSAGES)
+                .orElse(null);
+
+        final ImmutableThingValidationForbidConfig result = of(
+                thingDescriptionDeletion,
+                nonModeledProperties,
+                nonModeledInboxMessages,
+                nonModeledOutboxMessages);
+        return result;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final ImmutableThingValidationForbidConfig that = (ImmutableThingValidationForbidConfig) o;
+        return Objects.equals(thingDescriptionDeletion, that.thingDescriptionDeletion) &&
+                Objects.equals(nonModeledProperties, that.nonModeledProperties) &&
+                Objects.equals(nonModeledInboxMessages, that.nonModeledInboxMessages) &&
+                Objects.equals(nonModeledOutboxMessages, that.nonModeledOutboxMessages);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+                thingDescriptionDeletion,
+                nonModeledProperties,
+                nonModeledInboxMessages,
+                nonModeledOutboxMessages);
+    }
+
+    @Override
+    public String toString() {
+        return getClass().getSimpleName() + " [" +
+                "thingDescriptionDeletion=" + thingDescriptionDeletion +
+                ", nonModeledProperties=" + nonModeledProperties +
+                ", nonModeledInboxMessages=" + nonModeledInboxMessages +
+                ", nonModeledOutboxMessages=" + nonModeledOutboxMessages +
+                "]";
+    }
+} 

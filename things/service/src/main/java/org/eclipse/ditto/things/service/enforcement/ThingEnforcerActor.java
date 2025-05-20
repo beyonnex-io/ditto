@@ -681,7 +681,7 @@ public final class ThingEnforcerActor
         return resolveThingDefinition()
                 .thenComposeAsync(optThingDefinition -> {
                     if (messageDirection == MessageDirection.TO) {
-                        return thingModelValidator.validateThingActionInput(
+                        return DittoWotIntegration.get(context().system()).getWotThingModelValidator().validateThingActionInput(
                                 optThingDefinition.orElse(null),
                                 sendThingMessage.getMessage().getSubject(),
                                 messageCommandPayloadSupplier,
@@ -689,7 +689,7 @@ public final class ThingEnforcerActor
                                 sendThingMessage.getDittoHeaders()
                         );
                     } else if (messageDirection == MessageDirection.FROM) {
-                        return thingModelValidator.validateThingEventData(
+                        return DittoWotIntegration.get(context().system()).getWotThingModelValidator().validateThingEventData(
                                 optThingDefinition.orElse(null),
                                 sendThingMessage.getMessage().getSubject(),
                                 messageCommandPayloadSupplier,
@@ -715,7 +715,7 @@ public final class ThingEnforcerActor
         return resolveThingAndFeatureDefinition(featureId)
                 .thenComposeAsync(optDefinitionPair -> {
                     if (messageDirection == MessageDirection.TO) {
-                        return thingModelValidator.validateFeatureActionInput(
+                        return DittoWotIntegration.get(context().system()).getWotThingModelValidator().validateFeatureActionInput(
                                 optDefinitionPair.first().orElse(null),
                                 optDefinitionPair.second().orElse(null),
                                 featureId,
@@ -725,7 +725,7 @@ public final class ThingEnforcerActor
                                 sendFeatureMessage.getDittoHeaders()
                         );
                     } else if (messageDirection == MessageDirection.FROM) {
-                        return thingModelValidator.validateFeatureEventData(
+                        return DittoWotIntegration.get(context().system()).getWotThingModelValidator().validateFeatureEventData(
                                 optDefinitionPair.first().orElse(null),
                                 optDefinitionPair.second().orElse(null),
                                 featureId,
@@ -777,6 +777,7 @@ public final class ThingEnforcerActor
                                 sendThingMessageResponse.getDittoHeaders()
                         ), wotValidationExecutor
                     )
+
                     .thenApply(aVoid -> messageCommandResponse);
         } else if (messageCommandResponse instanceof SendFeatureMessageResponse<?> sendFeatureMessageResponse) {
             final String featureId = sendFeatureMessageResponse.getFeatureId();
@@ -792,6 +793,7 @@ public final class ThingEnforcerActor
                                 sendFeatureMessageResponse.getDittoHeaders()
                         ), wotValidationExecutor
                     )
+
                     .thenApply(aVoid -> messageCommandResponse);
         } else {
             return CompletableFuture.completedFuture(messageCommandResponse);

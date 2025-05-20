@@ -22,10 +22,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.UUID;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
@@ -59,19 +61,83 @@ import org.slf4j.spi.LoggingEventBuilder;
  * Default Ditto specific implementation of {@link WotThingModelValidator}.
  */
 @Immutable
-final class DefaultWotThingModelValidator implements WotThingModelValidator {
+public final class DefaultWotThingModelValidator implements WotThingModelValidator {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultWotThingModelValidator.class);
+    private static final AtomicReference<DefaultWotThingModelValidator> INSTANCE = new AtomicReference<>();
+    
     private final WotConfig wotConfig;
     private final WotThingModelResolver thingModelResolver;
     private final Executor executor;
+    private final AtomicReference<TmValidationConfig> dynamicConfig;
+    private final String instanceId = UUID.randomUUID().toString();
 
-    DefaultWotThingModelValidator(final WotConfig wotConfig,
+    private DefaultWotThingModelValidator(final WotConfig wotConfig,
             final WotThingModelResolver thingModelResolver,
-            final Executor executor) {
+            final Executor executor,
+            final TmValidationConfig initialConfig) {
         this.wotConfig = wotConfig;
         this.thingModelResolver = thingModelResolver;
         this.executor = executor;
+        log.info("[WoT Validator][instanceId={}] Initial config: enabled={}, logWarning={}, dynamicConfigs={}",
+            instanceId,
+            initialConfig.isEnabled(),
+            initialConfig.logWarningInsteadOfFailingApiCalls(),
+            initialConfig.getDynamicConfig().size());
+        log.info("[WoT Validator][instanceId={}] Initial config JSON: {}", instanceId, initialConfig.toString());
+        this.dynamicConfig = new AtomicReference<>(initialConfig);
+    }
+
+    /**
+     * Gets the singleton instance of the validator, creating it if it doesn't exist.
+     * 
+     * @param wotConfig the WoT config to use
+     * @param thingModelResolver the ThingModel resolver to use
+     * @param executor the executor to use
+     * @param initialConfig the initial validation config
+     * @return the singleton validator instance
+     */
+    public static DefaultWotThingModelValidator getInstance(final WotConfig wotConfig,
+            final WotThingModelResolver thingModelResolver,
+            final Executor executor,
+            final TmValidationConfig initialConfig) {
+        return INSTANCE.updateAndGet(existing -> {
+            if (existing == null) {
+                return new DefaultWotThingModelValidator(wotConfig, thingModelResolver, executor, initialConfig);
+            }
+            return existing;
+        });
+    }
+
+    /**
+     * Updates the validation configuration atomically.
+     * 
+     * @param newConfig the new validation config
+     */
+    public void updateConfig(final TmValidationConfig newConfig) {
+        final TmValidationConfig oldConfig = dynamicConfig.get();
+        log.info("[WoT Validator][instanceId={}] Updating config from enabled={} to enabled={}",
+            instanceId, oldConfig.isEnabled(), newConfig.isEnabled());
+        log.info("[WoT Validator][instanceId={}] Old config JSON: {}", instanceId, oldConfig.toString());
+        log.info("[WoT Validator][instanceId={}] New config JSON: {}", instanceId, newConfig.toString());
+        dynamicConfig.set(newConfig);
+    }
+
+    // Delegate config accessors to the current dynamic config
+    public boolean isEnabled() {
+        return dynamicConfig.get().isEnabled();
+    }
+
+    public boolean logWarningInsteadOfFailingApiCalls() {
+        return dynamicConfig.get().logWarningInsteadOfFailingApiCalls();
+    }
+
+    public org.eclipse.ditto.wot.validation.config.ThingValidationConfig getThingValidationConfig() {
+        return dynamicConfig.get().getThingValidationConfig();
+    }
+
+    public org.eclipse.ditto.wot.validation.config.FeatureValidationConfig getFeatureValidationConfig() {
+        return dynamicConfig.get().getFeatureValidationConfig();
     }
 
     @Override
@@ -79,8 +145,21 @@ final class DefaultWotThingModelValidator implements WotThingModelValidator {
             final JsonPointer resourcePath,
             final DittoHeaders dittoHeaders
     ) {
-        return thing.getDefinition()
-                .map(thingDefinition -> validateThing(thingDefinition, thing, resourcePath, dittoHeaders))
+        final String correlationId = dittoHeaders.getCorrelationId().orElse("none");
+        final TmValidationConfig currentConfig = dynamicConfig.get();
+        boolean enabled = currentConfig.isEnabled();
+        log.info("[WoT Validator][instanceId={}] validateThing called. enabled={}, logWarning={}, dynamicConfigs={}, correlationId={}",
+            instanceId,
+            enabled,
+            currentConfig.logWarningInsteadOfFailingApiCalls(),
+            currentConfig.getDynamicConfig().size(),
+            correlationId
+        );
+        final ValidationContext context = buildValidationContext(dittoHeaders, thing.getDefinition().orElse(null));
+        return provideValidationConfigIfWotValidationEnabled(context)
+                .map(validationConfig -> thing.getDefinition()
+                        .map(thingDefinition -> validateThing(thingDefinition, thing, resourcePath, dittoHeaders))
+                        .orElseGet(DefaultWotThingModelValidator::success))
                 .orElseGet(DefaultWotThingModelValidator::success);
     }
 
@@ -374,6 +453,18 @@ final class DefaultWotThingModelValidator implements WotThingModelValidator {
             final JsonPointer resourcePath,
             final DittoHeaders dittoHeaders
     ) {
+        final String correlationId = dittoHeaders.getCorrelationId().orElse("none");
+        boolean enabled = dynamicConfig.get().isEnabled();
+        log.info("[WoT Validator][instanceId={}] validateFeature called. enabled={}, logWarning={}, dynamicConfigs={}, correlationId={}",
+            instanceId,
+            enabled,
+            dynamicConfig.get().logWarningInsteadOfFailingApiCalls(),
+            dynamicConfig.get().getDynamicConfig().size(),
+            correlationId
+        );
+        if (!enabled) {
+            log.warn("[WoT Validator][instanceId={}] Validation should be skipped but was called! Stack trace:", instanceId, new Exception("Validation stack trace"));
+        }
         final ValidationContext context = buildValidationContext(dittoHeaders, thingDefinition, featureDefinition);
         return provideValidationConfigIfWotValidationEnabled(context)
                 .map(validationConfig -> {
@@ -665,9 +756,9 @@ final class DefaultWotThingModelValidator implements WotThingModelValidator {
     private Optional<TmValidationConfig> provideValidationConfigIfWotValidationEnabled(
             final ValidationContext context
     ) {
-        final TmValidationConfig validationConfig = wotConfig.getValidationConfig(context);
+        final TmValidationConfig validationConfig = dynamicConfig.get();
         if (FeatureToggle.isWotIntegrationFeatureEnabled() && validationConfig.isEnabled()) {
-            return Optional.of(validationConfig);
+            return Optional.of(validationConfig.withValidationContext(context));
         } else {
             return Optional.empty();
         }
