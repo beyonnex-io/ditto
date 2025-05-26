@@ -36,7 +36,7 @@ import javax.annotation.Nullable;
  * @since 3.8.0
  */
 @Immutable
-public final class ImmutableFeatureValidationConfig implements Jsonifiable<JsonObject> {
+public final class ImmutableFeatureValidationConfig implements FeatureValidationConfig {
 
 
     private static final JsonFieldDefinition<JsonObject> ENFORCE_FIELD =
@@ -44,12 +44,12 @@ public final class ImmutableFeatureValidationConfig implements Jsonifiable<JsonO
     private static final JsonFieldDefinition<JsonObject> FORBID_FIELD =
             JsonFactory.newJsonObjectFieldDefinition("forbid", FieldType.REGULAR, JsonSchemaVersion.V_2);
 
-    @Nullable private final ImmutableFeatureValidationEnforceConfig enforce;
-    @Nullable private final ImmutableFeatureValidationForbidConfig forbid;
+    @Nullable private final FeatureValidationEnforceConfig enforce;
+    @Nullable private final FeatureValidationForbidConfig forbid;
 
     private ImmutableFeatureValidationConfig(
-            @Nullable final ImmutableFeatureValidationEnforceConfig enforce,
-            @Nullable final ImmutableFeatureValidationForbidConfig forbid) {
+            @Nullable final FeatureValidationEnforceConfig enforce,
+            @Nullable final FeatureValidationForbidConfig forbid) {
         this.enforce = enforce;
         this.forbid = forbid;
     }
@@ -62,8 +62,8 @@ public final class ImmutableFeatureValidationConfig implements Jsonifiable<JsonO
      * @return a new instance with the specified values
      */
     public static ImmutableFeatureValidationConfig of(
-            @Nullable final ImmutableFeatureValidationEnforceConfig enforce,
-            @Nullable final ImmutableFeatureValidationForbidConfig forbid) {
+            @Nullable final FeatureValidationEnforceConfig enforce,
+            @Nullable final FeatureValidationForbidConfig forbid) {
         return new ImmutableFeatureValidationConfig(enforce, forbid);
     }
 
@@ -72,7 +72,7 @@ public final class ImmutableFeatureValidationConfig implements Jsonifiable<JsonO
      *
      * @return an optional containing the enforce configuration
      */
-    public Optional<ImmutableFeatureValidationEnforceConfig> getEnforce() {
+    public Optional<FeatureValidationEnforceConfig> getEnforce() {
         return Optional.ofNullable(enforce);
     }
 
@@ -81,7 +81,7 @@ public final class ImmutableFeatureValidationConfig implements Jsonifiable<JsonO
      *
      * @return an optional containing the forbid configuration
      */
-    public Optional<ImmutableFeatureValidationForbidConfig> getForbid() {
+    public Optional<FeatureValidationForbidConfig> getForbid() {
         return Optional.ofNullable(forbid);
     }
 

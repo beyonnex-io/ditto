@@ -36,7 +36,7 @@ import javax.annotation.Nullable;
  * @since 3.8.0
  */
 @Immutable
-public final class ImmutableThingValidationConfig implements Jsonifiable<JsonObject> {
+public final class ImmutableThingValidationConfig implements ThingValidationConfig {
 
 
     private static final JsonFieldDefinition<JsonObject> ENFORCE_FIELD =
@@ -44,12 +44,12 @@ public final class ImmutableThingValidationConfig implements Jsonifiable<JsonObj
     private static final JsonFieldDefinition<JsonObject> FORBID_FIELD =
             JsonFactory.newJsonObjectFieldDefinition("forbid", FieldType.REGULAR, JsonSchemaVersion.V_2);
 
-    @Nullable private final ImmutableThingValidationEnforceConfig enforce;
-    @Nullable private final ImmutableThingValidationForbidConfig forbid;
+    @Nullable private final ThingValidationEnforceConfig enforce;
+    @Nullable private final ThingValidationForbidConfig forbid;
 
     private ImmutableThingValidationConfig(
-            @Nullable final ImmutableThingValidationEnforceConfig enforce,
-            @Nullable final ImmutableThingValidationForbidConfig forbid) {
+            @Nullable final ThingValidationEnforceConfig enforce,
+            @Nullable final ThingValidationForbidConfig forbid) {
         this.enforce = enforce;
         this.forbid = forbid;
     }
@@ -62,8 +62,8 @@ public final class ImmutableThingValidationConfig implements Jsonifiable<JsonObj
      * @return a new instance with the specified values
      */
     public static ImmutableThingValidationConfig of(
-            @Nullable final ImmutableThingValidationEnforceConfig enforce,
-            @Nullable final ImmutableThingValidationForbidConfig forbid) {
+            @Nullable final ThingValidationEnforceConfig enforce,
+            @Nullable final ThingValidationForbidConfig forbid) {
         return new ImmutableThingValidationConfig(enforce, forbid);
     }
 
@@ -72,7 +72,7 @@ public final class ImmutableThingValidationConfig implements Jsonifiable<JsonObj
      *
      * @return an optional containing the enforce configuration
      */
-    public Optional<ImmutableThingValidationEnforceConfig> getEnforce() {
+    public Optional<ThingValidationEnforceConfig> getEnforce() {
         return Optional.ofNullable(enforce);
     }
 
@@ -81,7 +81,7 @@ public final class ImmutableThingValidationConfig implements Jsonifiable<JsonObj
      *
      * @return an optional containing the forbid configuration
      */
-    public Optional<ImmutableThingValidationForbidConfig> getForbid() {
+    public Optional<ThingValidationForbidConfig> getForbid() {
         return Optional.ofNullable(forbid);
     }
 

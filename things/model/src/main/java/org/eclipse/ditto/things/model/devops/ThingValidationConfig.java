@@ -14,27 +14,26 @@ package org.eclipse.ditto.things.model.devops;
 
 import org.eclipse.ditto.base.model.json.Jsonifiable;
 import org.eclipse.ditto.json.JsonObject;
+
 import java.util.Optional;
 
-public interface FeatureValidationConfig extends Jsonifiable<JsonObject> {
+/**
+ * Interface for Thing-level WoT (Web of Things) validation configuration.
+ * This represents configuration settings for Thing-level validation.
+ */
+public interface ThingValidationConfig extends Jsonifiable<JsonObject> {
+
     /**
      * Returns the enforce configuration.
      *
-     * @return an optional containing the enforce configuration.
+     * @return an optional containing the enforce configuration
      */
-    Optional<FeatureValidationEnforceConfig> getEnforce();
+    Optional<ThingValidationEnforceConfig> getEnforce();
 
     /**
      * Returns the forbid configuration.
      *
-     * @return an optional containing the forbid configuration.
+     * @return an optional containing the forbid configuration
      */
-    Optional<FeatureValidationForbidConfig> getForbid();
-
-    /**
-     * Returns this configuration as JSON object.
-     *
-     * @return the JSON object representation of this configuration.
-     */
-    JsonObject toJson();
-}
+    Optional<ThingValidationForbidConfig> getForbid();
+} 

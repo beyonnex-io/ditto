@@ -30,6 +30,7 @@ import org.eclipse.ditto.things.model.devops.WotValidationConfigId;
 import org.eclipse.ditto.things.model.devops.ImmutableDynamicValidationConfig;
 import org.eclipse.ditto.json.JsonPointer;
 import org.eclipse.ditto.base.model.signals.commands.Command;
+import org.eclipse.ditto.things.model.devops.exceptions.WotValidationConfigInvalidException;
 
 /**
  * Command to modify a single dynamic config section in the WoT (Web of Things) validation config.
@@ -124,12 +125,13 @@ public final class ModifyDynamicConfigSection extends AbstractWotValidationConfi
      * @param dittoHeaders the headers of the command.
      * @return the new instance.
      * @throws NullPointerException if any argument is {@code null}.
-     * @throws IllegalArgumentException if any required field is missing or invalid.
-     * @throws org.eclipse.ditto.json.JsonParseException if the passed in {@code jsonObject} was not in the expected format.
+     * @throws org.eclipse.ditto.things.model.devops.commands.WotValidationConfigInvalidException if any required field is missing or invalid.
      */
     public static ModifyDynamicConfigSection fromJson(final JsonObject jsonObject, final DittoHeaders dittoHeaders) {
         if (!jsonObject.getValue(SCOPE_ID).isPresent()) {
-            throw new IllegalArgumentException("Missing required field 'scopeId' in payload");
+            throw WotValidationConfigInvalidException.newBuilder("Missing required field 'scopeId' in payload")
+                    .dittoHeaders(dittoHeaders)
+                    .build();
         }
 
         final String configIdString = jsonObject.getValueOrThrow(WotValidationConfigCommand.JsonFields.CONFIG_ID);
@@ -138,9 +140,13 @@ public final class ModifyDynamicConfigSection extends AbstractWotValidationConfi
         final JsonObject dynamicConfigJson = JsonObject.newBuilder()
                 .set("scopeId", scopeId)
                 .set("validationContext", jsonObject.getValue("validationContext").orElseThrow(() ->
-                        new IllegalArgumentException("Missing required field 'validationContext' in payload")))
+                        WotValidationConfigInvalidException.newBuilder("Missing required field 'validationContext' in payload")
+                                .dittoHeaders(dittoHeaders)
+                                .build()))
                 .set("configOverrides", jsonObject.getValue("configOverrides").orElseThrow(() ->
-                        new IllegalArgumentException("Missing required field 'configOverrides' in payload")))
+                        WotValidationConfigInvalidException.newBuilder("Missing required field 'configOverrides' in payload")
+                                .dittoHeaders(dittoHeaders)
+                                .build()))
                 .build();
 
         final ImmutableDynamicValidationConfig dynamicConfigSection =

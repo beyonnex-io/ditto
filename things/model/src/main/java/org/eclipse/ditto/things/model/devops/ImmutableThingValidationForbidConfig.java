@@ -35,7 +35,7 @@ import javax.annotation.Nullable;
  * @since 3.8.0
  */
 @Immutable
-public final class ImmutableThingValidationForbidConfig implements Jsonifiable<JsonObject> {
+public final class ImmutableThingValidationForbidConfig implements ThingValidationForbidConfig {
 
 
     private static final JsonFieldDefinition<Boolean> THING_DESCRIPTION_DELETION =

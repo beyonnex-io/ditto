@@ -25,6 +25,7 @@ import org.eclipse.ditto.json.JsonValue;
 import org.eclipse.ditto.base.model.json.FieldType;
 import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
 import org.eclipse.ditto.base.model.json.Jsonifiable;
+import org.eclipse.ditto.things.model.devops.exceptions.WotValidationConfigInvalidException;
 
 /**
  * Immutable value object representing a dynamic validation configuration for WoT (Web of Things).
@@ -39,7 +40,7 @@ import org.eclipse.ditto.base.model.json.Jsonifiable;
  * @since 3.8.0
  */
 @Immutable
-public final class ImmutableDynamicValidationConfig implements Jsonifiable<JsonObject> {
+public final class ImmutableDynamicValidationConfig implements DynamicValidationConfig {
 
 
     private static final JsonFieldDefinition<String> SCOPE_ID_FIELD =
@@ -50,13 +51,13 @@ public final class ImmutableDynamicValidationConfig implements Jsonifiable<JsonO
             JsonFactory.newJsonObjectFieldDefinition("configOverrides", FieldType.REGULAR, JsonSchemaVersion.V_2);
 
     private final String scopeId;
-    @Nullable private final ImmutableValidationContext validationContext;
-    @Nullable private final ImmutableConfigOverrides configOverrides;
+    @Nullable private final ValidationContext validationContext;
+    @Nullable private final ConfigOverrides configOverrides;
 
     private ImmutableDynamicValidationConfig(
             final String scopeId,
-            @Nullable final ImmutableValidationContext validationContext,
-            @Nullable final ImmutableConfigOverrides configOverrides) {
+            @Nullable final ValidationContext validationContext,
+            @Nullable final ConfigOverrides configOverrides) {
         this.scopeId = Objects.requireNonNull(scopeId, "scopeId");
         this.validationContext = validationContext;
         this.configOverrides = configOverrides;
@@ -73,8 +74,8 @@ public final class ImmutableDynamicValidationConfig implements Jsonifiable<JsonO
      */
     public static ImmutableDynamicValidationConfig of(
             final String scopeId,
-            @Nullable final ImmutableValidationContext validationContext,
-            @Nullable final ImmutableConfigOverrides configOverrides) {
+            @Nullable final ValidationContext validationContext,
+            @Nullable final ConfigOverrides configOverrides) {
         return new ImmutableDynamicValidationConfig(scopeId, validationContext, configOverrides);
     }
 
@@ -94,12 +95,13 @@ public final class ImmutableDynamicValidationConfig implements Jsonifiable<JsonO
      */
     public static ImmutableDynamicValidationConfig fromJson(final JsonObject jsonObject) {
         if (jsonObject == null) {
-            throw new IllegalArgumentException("JSON object must not be null");
+            throw WotValidationConfigInvalidException.newBuilder("JSON object must not be null")
+                    .build();
         }
 
-
         final String scopeId = jsonObject.getValue(SCOPE_ID_FIELD)
-                .orElseThrow(() -> new IllegalArgumentException("Missing required field: scopeId"));
+                .orElseThrow(() -> WotValidationConfigInvalidException.newBuilder("Missing required field: scopeId")
+                        .build());
 
         final ImmutableValidationContext validationContext = jsonObject.getValue(VALIDATION_CONTEXT_FIELD)
                 .filter(JsonValue::isObject)
@@ -120,11 +122,11 @@ public final class ImmutableDynamicValidationConfig implements Jsonifiable<JsonO
         return scopeId;
     }
 
-    public Optional<ImmutableValidationContext> getValidationContext() {
+    public Optional<ValidationContext> getValidationContext() {
         return Optional.ofNullable(validationContext);
     }
 
-    public Optional<ImmutableConfigOverrides> getConfigOverrides() {
+    public Optional<ConfigOverrides> getConfigOverrides() {
         return Optional.ofNullable(configOverrides);
     }
 

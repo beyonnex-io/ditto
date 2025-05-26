@@ -36,7 +36,7 @@ import javax.annotation.Nullable;
  * @since 3.8.0
  */
 @Immutable
-public final class ImmutableConfigOverrides implements Jsonifiable<JsonObject> {
+public final class ImmutableConfigOverrides implements ConfigOverrides{
 
 
     private static final JsonFieldDefinition<Boolean> ENABLED_FIELD =
@@ -50,14 +50,14 @@ public final class ImmutableConfigOverrides implements Jsonifiable<JsonObject> {
 
     @Nullable private final Boolean enabled;
     @Nullable private final Boolean logWarningInsteadOfFailing;
-    @Nullable private final ImmutableThingValidationConfig thingConfig;
-    @Nullable private final ImmutableFeatureValidationConfig featureConfig;
+    @Nullable private final ThingValidationConfig thingConfig;
+    @Nullable private final FeatureValidationConfig featureConfig;
 
     private ImmutableConfigOverrides(
             @Nullable final Boolean enabled,
             @Nullable final Boolean logWarningInsteadOfFailing,
-            @Nullable final ImmutableThingValidationConfig thingConfig,
-            @Nullable final ImmutableFeatureValidationConfig featureConfig) {
+            @Nullable final ThingValidationConfig thingConfig,
+            @Nullable final FeatureValidationConfig featureConfig) {
         this.enabled = enabled;
         this.logWarningInsteadOfFailing = logWarningInsteadOfFailing;
         this.thingConfig = thingConfig;
@@ -76,8 +76,8 @@ public final class ImmutableConfigOverrides implements Jsonifiable<JsonObject> {
     public static ImmutableConfigOverrides of(
             @Nullable final Boolean enabled,
             @Nullable final Boolean logWarningInsteadOfFailing,
-            @Nullable final ImmutableThingValidationConfig thingConfig,
-            @Nullable final ImmutableFeatureValidationConfig featureConfig) {
+            @Nullable final ThingValidationConfig thingConfig,
+            @Nullable final FeatureValidationConfig featureConfig) {
         return new ImmutableConfigOverrides(enabled, logWarningInsteadOfFailing, thingConfig, featureConfig);
     }
 
@@ -86,6 +86,7 @@ public final class ImmutableConfigOverrides implements Jsonifiable<JsonObject> {
      *
      * @return an optional containing the override value
      */
+    @Override
     public Optional<Boolean> getEnabled() {
         return Optional.ofNullable(enabled);
     }
@@ -95,6 +96,7 @@ public final class ImmutableConfigOverrides implements Jsonifiable<JsonObject> {
      *
      * @return an optional containing the override value
      */
+    @Override
     public Optional<Boolean> getLogWarningInsteadOfFailing() {
         return Optional.ofNullable(logWarningInsteadOfFailing);
     }
@@ -104,7 +106,8 @@ public final class ImmutableConfigOverrides implements Jsonifiable<JsonObject> {
      *
      * @return an optional containing the Thing-level config overrides
      */
-    public Optional<ImmutableThingValidationConfig> getThingConfig() {
+    @Override
+    public Optional<ThingValidationConfig> getThingConfig() {
         return Optional.ofNullable(thingConfig);
     }
 
@@ -113,7 +116,8 @@ public final class ImmutableConfigOverrides implements Jsonifiable<JsonObject> {
      *
      * @return an optional containing the Feature-level config overrides
      */
-    public Optional<ImmutableFeatureValidationConfig> getFeatureConfig() {
+    @Override
+    public Optional<FeatureValidationConfig> getFeatureConfig() {
         return Optional.ofNullable(featureConfig);
     }
 
@@ -153,12 +157,12 @@ public final class ImmutableConfigOverrides implements Jsonifiable<JsonObject> {
         final Boolean logWarning = jsonObject.getValue(LOG_WARNING_INSTEAD_OF_FAILING_FIELD)
                 .orElse(null);
 
-        final ImmutableThingValidationConfig thing = jsonObject.getValue(THING_FIELD)
+        final ThingValidationConfig thing = jsonObject.getValue(THING_FIELD)
                 .map(JsonValue::asObject)
                 .map(ImmutableThingValidationConfig::fromJson)
                 .orElse(null);
 
-        final ImmutableFeatureValidationConfig feature = jsonObject.getValue(FEATURE_FIELD)
+        final FeatureValidationConfig feature = jsonObject.getValue(FEATURE_FIELD)
                 .map(JsonValue::asObject)
                 .map(ImmutableFeatureValidationConfig::fromJson)
                 .orElse(null);

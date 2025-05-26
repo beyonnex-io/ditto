@@ -26,6 +26,7 @@ import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonValue;
 import org.eclipse.ditto.json.JsonFieldDefinition;
+import org.eclipse.ditto.things.model.devops.exceptions.WotValidationConfigInvalidException;
 
 /**
  * Java representation of a WoT validation config ID.
@@ -77,10 +78,12 @@ public final class WotValidationConfigId extends AbstractNamespacedEntityId impl
      */
     public static WotValidationConfigId of(final String namespace, final String name) {
         if (namespace == null || namespace.isEmpty()) {
-            throw new IllegalArgumentException("The namespace must not be empty.");
+            throw WotValidationConfigInvalidException.newBuilder("The namespace must not be empty.")
+                    .build();
         }
         if (name == null || name.isEmpty()) {
-            throw new IllegalArgumentException("The name must not be empty.");
+            throw WotValidationConfigInvalidException.newBuilder("The name must not be empty.")
+                    .build();
         }
         final String id = namespace + ":" + name;
         return new WotValidationConfigId(new AbstractNamespacedEntityId(ENTITY_TYPE, id) {

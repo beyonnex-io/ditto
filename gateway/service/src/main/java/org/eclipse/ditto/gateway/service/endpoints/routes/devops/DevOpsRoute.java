@@ -51,6 +51,7 @@ import org.eclipse.ditto.things.model.devops.commands.RetrieveWotValidationConfi
 import org.eclipse.ditto.things.model.devops.commands.ModifyWotValidationConfig;
 import org.eclipse.ditto.things.model.devops.commands.DeleteWotValidationConfig;
 import org.eclipse.ditto.things.model.devops.commands.RetrieveMergedWotValidationConfig;
+import org.eclipse.ditto.things.model.devops.exceptions.WotValidationConfigInvalidException;
 
 /**
  * Builder for creating Pekko HTTP routes for {@code /devops}.
@@ -184,12 +185,16 @@ public final class DevOpsRoute extends AbstractRoute {
                                 final JsonObject configJson = JsonFactory.readFrom(json).asObject();
                                 
                                 if (!configJson.getValue("scopeId").isPresent()) {
-                                    throw new IllegalArgumentException("Missing required field 'scopeId' in payload");
+                                    throw WotValidationConfigInvalidException.newBuilder("Missing required field 'scopeId' in payload")
+                                            .dittoHeaders(dittoHeaders)
+                                            .build();
                                 }
 
                                 final String payloadScopeId = configJson.getValue("scopeId")
                                     .map(JsonValue::asString)
-                                    .orElseThrow(() -> new IllegalArgumentException("Invalid 'scopeId' in payload"));
+                                    .orElseThrow(() -> WotValidationConfigInvalidException.newBuilder("Invalid 'scopeId' in payload")
+                                            .dittoHeaders(dittoHeaders)
+                                            .build());
 
                                 final org.eclipse.ditto.things.model.devops.ImmutableDynamicValidationConfig section =
                                     org.eclipse.ditto.things.model.devops.ImmutableDynamicValidationConfig.fromJson(configJson);

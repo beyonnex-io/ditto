@@ -17,17 +17,16 @@ import javax.annotation.concurrent.Immutable;
 import javax.annotation.Nonnull;
 
 import org.eclipse.ditto.json.JsonKey;
+import org.eclipse.ditto.things.model.devops.FeatureValidationConfig;
+import org.eclipse.ditto.things.model.devops.FeatureValidationEnforceConfig;
+import org.eclipse.ditto.things.model.devops.FeatureValidationForbidConfig;
+import org.eclipse.ditto.things.model.devops.ThingValidationConfig;
+import org.eclipse.ditto.things.model.devops.ThingValidationEnforceConfig;
+import org.eclipse.ditto.things.model.devops.ThingValidationForbidConfig;
 import org.eclipse.ditto.things.model.devops.WotValidationConfigId;
 import org.eclipse.ditto.things.model.devops.WotValidationConfigRevision;
-import org.eclipse.ditto.wot.validation.config.ThingValidationConfig;
-import org.eclipse.ditto.wot.validation.config.FeatureValidationConfig;
 import org.eclipse.ditto.wot.validation.config.TmValidationConfig;
 import org.eclipse.ditto.json.JsonObject;
-import org.eclipse.ditto.json.JsonFactory;
-import org.eclipse.ditto.json.JsonObjectBuilder;
-import org.eclipse.ditto.json.JsonArrayBuilder;
-import org.eclipse.ditto.json.JsonValue;
-import org.eclipse.ditto.base.model.exceptions.DittoJsonException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,7 +66,7 @@ public final class WotValidationConfigUtils {
         throw new AssertionError();
     }
 
-    public static ImmutableThingValidationConfig mapToDevopsThingValidationConfig(final ThingValidationConfig apiConfig) {
+    public static ImmutableThingValidationConfig mapToDevopsThingValidationConfig(final org.eclipse.ditto.wot.validation.config.ThingValidationConfig apiConfig) {
         return ImmutableThingValidationConfig.of(
                 ImmutableThingValidationEnforceConfig.of(
                         apiConfig.isEnforceThingDescriptionModification(),
@@ -85,7 +84,7 @@ public final class WotValidationConfigUtils {
         );
     }
 
-    public static ImmutableFeatureValidationConfig mapToDevopsFeatureValidationConfig(final FeatureValidationConfig apiConfig) {
+    public static ImmutableFeatureValidationConfig mapToDevopsFeatureValidationConfig(final org.eclipse.ditto.wot.validation.config.FeatureValidationConfig apiConfig) {
         return ImmutableFeatureValidationConfig.of(
                 ImmutableFeatureValidationEnforceConfig.of(
                         apiConfig.isEnforceFeatureDescriptionModification(),
@@ -240,14 +239,14 @@ public final class WotValidationConfigUtils {
         }
 
         // Merge enforce config
-        final ImmutableThingValidationEnforceConfig mergedEnforce = mergeThingEnforceConfig(
-                Optional.ofNullable(dynamicConfig).flatMap(ImmutableThingValidationConfig::getEnforce),
-                Optional.ofNullable(staticConfig).flatMap(ImmutableThingValidationConfig::getEnforce));
+        final ThingValidationEnforceConfig mergedEnforce = mergeThingEnforceConfig(
+                Optional.ofNullable(dynamicConfig).flatMap(ThingValidationConfig::getEnforce),
+                Optional.ofNullable(staticConfig).flatMap(ThingValidationConfig::getEnforce));
 
         // Merge forbid config
-        final ImmutableThingValidationForbidConfig mergedForbid = mergeThingForbidConfig(
-                Optional.ofNullable(dynamicConfig).flatMap(ImmutableThingValidationConfig::getForbid),
-                Optional.ofNullable(staticConfig).flatMap(ImmutableThingValidationConfig::getForbid));
+        final ThingValidationForbidConfig mergedForbid = mergeThingForbidConfig(
+                Optional.ofNullable(dynamicConfig).flatMap(ThingValidationConfig::getForbid),
+                Optional.ofNullable(staticConfig).flatMap(ThingValidationConfig::getForbid));
 
         return ImmutableThingValidationConfig.of(mergedEnforce, mergedForbid);
     }
@@ -260,20 +259,20 @@ public final class WotValidationConfigUtils {
             return null;
         }
 
-        final ImmutableFeatureValidationEnforceConfig mergedEnforce = mergeFeatureEnforceConfig(
-                Optional.ofNullable(dynamicConfig).flatMap(ImmutableFeatureValidationConfig::getEnforce),
-                Optional.ofNullable(staticConfig).flatMap(ImmutableFeatureValidationConfig::getEnforce));
+        final FeatureValidationEnforceConfig mergedEnforce = mergeFeatureEnforceConfig(
+                Optional.ofNullable(dynamicConfig).flatMap(FeatureValidationConfig::getEnforce),
+                Optional.ofNullable(staticConfig).flatMap(FeatureValidationConfig::getEnforce));
 
-        final ImmutableFeatureValidationForbidConfig mergedForbid = mergeFeatureForbidConfig(
-                Optional.ofNullable(dynamicConfig).flatMap(ImmutableFeatureValidationConfig::getForbid),
-                Optional.ofNullable(staticConfig).flatMap(ImmutableFeatureValidationConfig::getForbid));
+        final FeatureValidationForbidConfig mergedForbid = mergeFeatureForbidConfig(
+                Optional.ofNullable(dynamicConfig).flatMap(FeatureValidationConfig::getForbid),
+                Optional.ofNullable(staticConfig).flatMap(FeatureValidationConfig::getForbid));
 
         return ImmutableFeatureValidationConfig.of(mergedEnforce, mergedForbid);
     }
 
-    private static ImmutableThingValidationEnforceConfig mergeThingEnforceConfig(
-            @Nonnull final Optional<ImmutableThingValidationEnforceConfig> optionalDynamicEnforce,
-            @Nonnull final Optional<ImmutableThingValidationEnforceConfig> optionalStaticEnforce) {
+    private static ThingValidationEnforceConfig mergeThingEnforceConfig(
+            @Nonnull final Optional<ThingValidationEnforceConfig> optionalDynamicEnforce,
+            @Nonnull final Optional<ThingValidationEnforceConfig> optionalStaticEnforce) {
 
         Objects.requireNonNull(optionalDynamicEnforce, "optionalDynamicEnforce must not be null");
         Objects.requireNonNull(optionalStaticEnforce, "optionalStaticEnforce must not be null");
@@ -287,8 +286,8 @@ public final class WotValidationConfigUtils {
             return optionalDynamicEnforce.get();
         }
 
-        final ImmutableThingValidationEnforceConfig dynamicConfig = optionalDynamicEnforce.get();
-        final ImmutableThingValidationEnforceConfig staticEnforce = optionalStaticEnforce.get();
+        final ThingValidationEnforceConfig dynamicConfig = optionalDynamicEnforce.get();
+        final ThingValidationEnforceConfig staticEnforce = optionalStaticEnforce.get();
 
         return ImmutableThingValidationEnforceConfig.of(
                 mergeBoolean(dynamicConfig.isThingDescriptionModification(), staticEnforce.isThingDescriptionModification()),
@@ -299,9 +298,9 @@ public final class WotValidationConfigUtils {
         );
     }
 
-    private static ImmutableThingValidationForbidConfig mergeThingForbidConfig(
-            @Nonnull final Optional<ImmutableThingValidationForbidConfig> optionalDynamicForbid,
-            @Nonnull final Optional<ImmutableThingValidationForbidConfig> optionalStaticForbid) {
+    private static ThingValidationForbidConfig mergeThingForbidConfig(
+            @Nonnull final Optional<ThingValidationForbidConfig> optionalDynamicForbid,
+            @Nonnull final Optional<ThingValidationForbidConfig> optionalStaticForbid) {
 
         Objects.requireNonNull(optionalDynamicForbid, "optionalDynamicForbid must not be null");
         Objects.requireNonNull(optionalStaticForbid, "optionalStaticForbid must not be null");
@@ -315,8 +314,8 @@ public final class WotValidationConfigUtils {
             return optionalDynamicForbid.get();
         }
 
-        final ImmutableThingValidationForbidConfig dynamicConfig = optionalDynamicForbid.get();
-        final ImmutableThingValidationForbidConfig staticForbid = optionalStaticForbid.get();
+        final ThingValidationForbidConfig dynamicConfig = optionalDynamicForbid.get();
+        final ThingValidationForbidConfig staticForbid = optionalStaticForbid.get();
 
         return ImmutableThingValidationForbidConfig.of(
                 mergeBoolean(dynamicConfig.isThingDescriptionDeletion(), staticForbid.isThingDescriptionDeletion()),
@@ -326,9 +325,9 @@ public final class WotValidationConfigUtils {
         );
     }
 
-    private static ImmutableFeatureValidationEnforceConfig mergeFeatureEnforceConfig(
-            @Nonnull final Optional<ImmutableFeatureValidationEnforceConfig> optionalDynamicEnforce,
-            @Nonnull final Optional<ImmutableFeatureValidationEnforceConfig> optionalStaticEnforce) {
+    private static FeatureValidationEnforceConfig mergeFeatureEnforceConfig(
+            @Nonnull final Optional<FeatureValidationEnforceConfig> optionalDynamicEnforce,
+            @Nonnull final Optional<FeatureValidationEnforceConfig> optionalStaticEnforce) {
 
         Objects.requireNonNull(optionalDynamicEnforce, "optionalDynamicEnforce must not be null");
         Objects.requireNonNull(optionalStaticEnforce, "optionalStaticEnforce must not be null");
@@ -342,8 +341,8 @@ public final class WotValidationConfigUtils {
             return optionalDynamicEnforce.get();
         }
 
-        final ImmutableFeatureValidationEnforceConfig dynamicConfig = optionalDynamicEnforce.get();
-        final ImmutableFeatureValidationEnforceConfig staticEnforce = optionalStaticEnforce.get();
+        final FeatureValidationEnforceConfig dynamicConfig = optionalDynamicEnforce.get();
+        final FeatureValidationEnforceConfig staticEnforce = optionalStaticEnforce.get();
 
         return ImmutableFeatureValidationEnforceConfig.of(
                 mergeBoolean(dynamicConfig.isFeatureDescriptionModification(), staticEnforce.isFeatureDescriptionModification()),
@@ -356,9 +355,9 @@ public final class WotValidationConfigUtils {
         );
     }
 
-    private static ImmutableFeatureValidationForbidConfig mergeFeatureForbidConfig(
-            @Nonnull final Optional<ImmutableFeatureValidationForbidConfig> optionalDynamicForbid,
-            @Nonnull final Optional<ImmutableFeatureValidationForbidConfig> optionalStaticForbid) {
+    private static FeatureValidationForbidConfig mergeFeatureForbidConfig(
+            @Nonnull final Optional<FeatureValidationForbidConfig> optionalDynamicForbid,
+            @Nonnull final Optional<FeatureValidationForbidConfig> optionalStaticForbid) {
 
         Objects.requireNonNull(optionalDynamicForbid, "optionalDynamicForbid must not be null");
         Objects.requireNonNull(optionalStaticForbid, "optionalStaticForbid must not be null");
@@ -372,8 +371,8 @@ public final class WotValidationConfigUtils {
             return optionalDynamicForbid.get();
         }
 
-        final ImmutableFeatureValidationForbidConfig dynamicConfig = optionalDynamicForbid.get();
-        final ImmutableFeatureValidationForbidConfig staticForbid = optionalStaticForbid.get();
+        final FeatureValidationForbidConfig dynamicConfig = optionalDynamicForbid.get();
+        final FeatureValidationForbidConfig staticForbid = optionalStaticForbid.get();
 
         return ImmutableFeatureValidationForbidConfig.of(
                 mergeBoolean(dynamicConfig.isFeatureDescriptionDeletion(), staticForbid.isFeatureDescriptionDeletion()),

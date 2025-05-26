@@ -35,7 +35,7 @@ import javax.annotation.Nullable;
  * @since 3.8.0
  */
 @Immutable
-public final class ImmutableFeatureValidationEnforceConfig implements Jsonifiable<JsonObject> {
+public final class ImmutableFeatureValidationEnforceConfig implements FeatureValidationEnforceConfig {
 
 
     private static final JsonFieldDefinition<Boolean> FEATURE_DESCRIPTION_MODIFICATION =

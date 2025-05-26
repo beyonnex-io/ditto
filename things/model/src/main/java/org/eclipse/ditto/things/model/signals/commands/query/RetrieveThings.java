@@ -49,6 +49,7 @@ import org.eclipse.ditto.things.model.ThingConstants;
 import org.eclipse.ditto.things.model.ThingId;
 import org.eclipse.ditto.things.model.signals.commands.ThingCommand;
 import org.eclipse.ditto.things.model.signals.commands.exceptions.MissingThingIdsException;
+import org.eclipse.ditto.things.model.devops.exceptions.WotValidationConfigInvalidException;
 
 /**
  * Command which retrieves several {@link org.eclipse.ditto.things.model.Thing}s based on the the passed in List of
@@ -126,14 +127,16 @@ public final class RetrieveThings extends AbstractCommand<RetrieveThings>
                     .collect(Collectors.toList());
 
             if (distinctNamespaces.size() != 1) {
-                throw new IllegalArgumentException(
-                        "Retrieving multiple things is only supported if all things are in the same, non empty namespace");
+                throw WotValidationConfigInvalidException.newBuilder(
+                        "Retrieving multiple things is only supported if all things are in the same, non empty namespace")
+                        .build();
             }
 
             // if a specific namespace is provided it must match the namespace of the things to retrieve
             if (!distinctNamespaces.get(0).equals(providedNamespace)) {
-                throw new IllegalArgumentException(
-                        "The provided namespace must match the namespace of all things to retrieve.");
+                throw WotValidationConfigInvalidException.newBuilder(
+                        "The provided namespace must match the namespace of all things to retrieve.")
+                        .build();
             }
         }
         return providedNamespace;

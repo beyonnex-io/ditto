@@ -88,7 +88,6 @@ import org.eclipse.ditto.things.service.enforcement.ThingEnforcerActor;
 import org.eclipse.ditto.things.service.enforcement.ThingPolicyCreated;
 import org.eclipse.ditto.things.service.persistence.actors.enrichment.EnrichSignalWithPreDefinedExtraFields;
 import org.eclipse.ditto.thingsearch.api.ThingsSearchConstants;
-import org.eclipse.ditto.things.model.devops.commands.WotValidationConfigCommand;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.things.model.devops.exceptions.WotValidationConfigNotAccessibleException;
 
@@ -489,7 +488,6 @@ public final class ThingSupervisorActor extends AbstractPersistenceSupervisor<Th
                 })
                 .match(RollbackCreatedPolicy.class, this::handleRollbackCreatedPolicy)
                 .match(EnrichSignalWithPreDefinedExtraFields.class, this::enrichSignalWithPreDefinedExtraFields)
-                .match(WotValidationConfigCommand.class, this::handleWotValidationConfigCommand)
                 .build()
                 .orElse(super.activeBehaviour(matchProcessNextTwinMessageBehavior, matchAnyBehavior));
     }
@@ -513,23 +511,6 @@ public final class ThingSupervisorActor extends AbstractPersistenceSupervisor<Th
                         e.getMessage());
                 return false;
             }
-        } else if (event instanceof WotValidationConfigModifiedEvent wotEvent) {
-            log.debug("Filtering WoT validation config event: {}", event);
-            try {
-                final Criteria criteria = subscribe.getFilter()
-                        .map(f -> parseCriteria(f, subscribe.getDittoHeaders()))
-                        .orElse(null);
-                final JsonObject eventJson = JsonObject.newBuilder()
-                        .set("entityId", wotEvent.getEntityId().toString())
-                        .set("config", wotEvent.getConfig().toJson())
-                        .build();
-                return criteria != null ? criteria.accept(new WotValidationConfigCriteriaVisitor(eventJson)) : true;
-            } catch (final DittoRuntimeException e) {
-                log.error("Got 'DittoRuntimeException' when parsing 'filter' during " +
-                                "'SubscribeForPersistedEvents' processing for WoT validation config: {}: <{}>",
-                        e.getClass().getSimpleName(), e.getMessage());
-                return false;
-            }
         } else {
             return false;
         }
@@ -546,18 +527,6 @@ public final class ThingSupervisorActor extends AbstractPersistenceSupervisor<Th
         getContext().stop(getSelf());
     }
     private record CommandResponsePair<C, R>(C command, R response) {}
-
-    private void handleWotValidationConfigCommand(final WotValidationConfigCommand<?> command) {
-        if (null != persistenceActorChild) {
-            persistenceActorChild.forward(command, getContext());
-        } else {
-            final WotValidationConfigNotAccessibleException exception = WotValidationConfigNotAccessibleException
-                    .newBuilder(command.getEntityId())
-                    .dittoHeaders(command.getDittoHeaders())
-                    .build();
-            getSender().tell(ThingErrorResponse.of(exception), getSelf());
-        }
-    }
 
     private enum Control {
         SHUTDOWN_TIMEOUT

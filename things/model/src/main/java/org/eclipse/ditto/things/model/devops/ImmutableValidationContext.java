@@ -31,7 +31,7 @@ import java.util.stream.Collectors;
  * @since 3.8.0
  */
 @Immutable
-public final class ImmutableValidationContext implements Jsonifiable<JsonObject> {
+public final class ImmutableValidationContext implements ValidationContext {
 
     private static final String DITTO_HEADERS_PATTERNS_FIELD = "dittoHeadersPatterns";
     private static final String THING_DEF_PATTERNS_FIELD = "thingDefinitionPatterns";
