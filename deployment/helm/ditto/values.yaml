@@ -302,6 +302,18 @@ ingress:
     enabled: false
     # replicaCount configuration for the ingress controller
     replicaCount: 1
+    # Exposes the ingress controller settings in order to configure its behavior.
+    config:
+      # Sets the number of worker processes that should be started by the ingress controller.
+      # Depending on the load of the ingress controller, this value can be increased or decreased.
+      # When not sure setting it to auto is also fine, but take cares as that will increase RAM usage.
+      workerProcesses: 2
+      # Sets the maximum number of simultaneous connections that can be opened by each worker process.
+      # 0 will use the value of max-worker-open-files. default: 16384
+      workerConnections: 0
+      # Sets the maximum number of files that can be opened by each worker process.
+      # The default of 0 means "max open files (system's limit) - 1024".
+      workerOpenFiles: 0
     updateStrategy:
       type: RollingUpdate
       rollingUpdate:
@@ -1433,6 +1445,23 @@ thingsSearch:
           throughput: 100
           # period the throttle period
           period: 30s
+    # countHintIndexName contains the optional index name to use for doing count queries at the search collection,
+    #  e.g. preventing use of the wildcard index
+    countHintIndexName: null
+    # indexInitialization contains configuration for creation of the "search" collection indices
+    indexInitialization:
+      # enabled whether the index initialization should be enabled or not (also removes not known indices)
+      enabled: true
+      # activatedIndexNames contains the list of indices to be actively created (well known ones) or custom ones not to remove actively
+      #  if the list is empty, all "Ditto known" indices will be created
+      activatedIndexNames: []
+        # - "_namespace",
+        # - "global_read",
+        # - "v_wildcard",
+        # - "v_wildcard_id",
+        # - "policyId",
+        # - "referencedPolicies",
+        # - "deleteAt"
     # indexedFieldsLimiting by default, Ditto indexed all fields of things in its search.
     #  However, this behavior can be customized, providing configuration to only index certain fields for specified namespaces.
     indexedFieldsLimiting:
