@@ -83,8 +83,8 @@ final class RetrieveDynamicConfigSectionStrategy extends AbstractWotValidationCo
 
         if (entity == null) {
             return ResultFactory.newErrorResult(
-                WotValidationConfigNotAccessibleException.newBuilder(command.getEntityId())
-                    .description("No WoT validation config found for id: " + command.getEntityId())
+                WotValidationConfigNotAccessibleException.newBuilderForScope(scopeId)
+                    .description("No WoT validation config found")
                     .dittoHeaders(dittoHeaders)
                     .build(),
                 command
@@ -97,8 +97,8 @@ final class RetrieveDynamicConfigSectionStrategy extends AbstractWotValidationCo
 
         if (section.isEmpty()) {
             return ResultFactory.newErrorResult(
-                WotValidationConfigNotAccessibleException.newBuilder(command.getEntityId())
-                    .description("No dynamic config section found for scopeId: " + scopeId)
+                WotValidationConfigNotAccessibleException.newBuilderForScope(scopeId)
+                    .description("Dynamic config section not found for scope: " + scopeId)
                     .dittoHeaders(dittoHeaders)
                     .build(),
                 command

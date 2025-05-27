@@ -13,6 +13,7 @@
 package org.eclipse.ditto.things.service.persistence.actors.strategies.commands;
 
 import org.eclipse.ditto.base.model.entity.metadata.Metadata;
+import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.base.model.headers.entitytag.EntityTag;
 import org.eclipse.ditto.internal.utils.persistentactors.results.Result;
 import org.eclipse.ditto.internal.utils.persistentactors.results.ResultFactory;
@@ -110,13 +111,22 @@ final class ModifyWotValidationConfigStrategy extends AbstractWotValidationConfi
             );
             becameCreated = false;
         }
+        final boolean isNewConfig = entity == null;
 
-        final ModifyWotValidationConfigResponse response = ModifyWotValidationConfigResponse.of(
-                command.getEntityId(),
-                configWithRevision.toJson(),
-                createCommandResponseDittoHeaders(command.getDittoHeaders(), nextRevision));
-
-        return ResultFactory.newMutationResult(command, event, response, becameCreated, false);
+        if (isNewConfig) {
+            final ModifyWotValidationConfigResponse response = ModifyWotValidationConfigResponse.created(
+                    command.getEntityId(),
+                    configWithRevision.toJson(),
+                    createCommandResponseDittoHeaders(command.getDittoHeaders(), nextRevision)
+            );
+            return ResultFactory.newMutationResult(command, event, response, true, false);
+        } else {
+            final ModifyWotValidationConfigResponse response = ModifyWotValidationConfigResponse.modified(
+                    command.getEntityId(),
+                    configWithRevision,
+                    createCommandResponseDittoHeaders(command.getDittoHeaders(), nextRevision));
+            return ResultFactory.newMutationResult(command, event, response, false, false);
+        }
     }
 
     @Override

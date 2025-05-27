@@ -110,7 +110,7 @@ final class DeleteDynamicConfigSectionStrategy extends AbstractWotValidationConf
         LOGGER.info("Received DeleteDynamicConfigSection command for scopeId={}", scopeId);
 
         if (entity == null) {
-            final String errorMessage = "No WoT validation config found for id: " + command.getEntityId();
+            final String errorMessage = "No WoT validation config found";
             LOGGER.error(errorMessage);
             return ResultFactory.newErrorResult(
                 WotValidationConfigNotAccessibleException.newBuilder(command.getEntityId())

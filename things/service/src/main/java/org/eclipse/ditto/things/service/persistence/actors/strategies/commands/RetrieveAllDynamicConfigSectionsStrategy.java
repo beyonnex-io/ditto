@@ -20,12 +20,11 @@ import org.eclipse.ditto.internal.utils.persistentactors.results.ResultFactory;
 import org.eclipse.ditto.things.model.devops.ImmutableWotValidationConfig;
 import org.eclipse.ditto.things.model.devops.WotValidationConfigId;
 import org.eclipse.ditto.things.model.devops.commands.RetrieveAllDynamicConfigSections;
-import org.eclipse.ditto.things.model.devops.commands.RetrieveWotValidationConfigResponse;
+import org.eclipse.ditto.things.model.devops.commands.RetrieveDynamicConfigsResponse;
 import org.eclipse.ditto.things.model.devops.events.WotValidationConfigEvent;
+import org.eclipse.ditto.json.JsonArray;
 import org.eclipse.ditto.json.JsonArrayBuilder;
 import org.eclipse.ditto.json.JsonFactory;
-import org.eclipse.ditto.json.JsonObject;
-import org.eclipse.ditto.json.JsonPointer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,15 +74,15 @@ final class RetrieveAllDynamicConfigSectionsStrategy extends AbstractWotValidati
                                                          @Nullable final Metadata metadata) {
         LOGGER.info("Received RetrieveAllDynamicConfigSections");
         final DittoHeaders dittoHeaders = command.getDittoHeaders();
-        JsonObject responseJson;
+        JsonArray dynamicConfigs;
         if (entity != null && entity.getDynamicConfig() != null) {
             JsonArrayBuilder arrayBuilder = JsonFactory.newArrayBuilder();
             entity.getDynamicConfig().forEach(section -> arrayBuilder.add(section.toJson()));
-            responseJson = JsonFactory.newObjectBuilder().set("dynamicConfigs", arrayBuilder.build()).build();
+            dynamicConfigs = arrayBuilder.build();
         } else {
-            responseJson = JsonFactory.newObjectBuilder().set("dynamicConfigs", JsonFactory.newArrayBuilder().build()).build();
+            dynamicConfigs = JsonFactory.newArrayBuilder().build();
         }
-        RetrieveWotValidationConfigResponse response = RetrieveWotValidationConfigResponse.of(command.getEntityId(), responseJson, createCommandResponseDittoHeaders(dittoHeaders, nextRevision));
+        RetrieveDynamicConfigsResponse response = RetrieveDynamicConfigsResponse.of(command.getEntityId(), dynamicConfigs, createCommandResponseDittoHeaders(dittoHeaders, nextRevision));
         return ResultFactory.newQueryResult(command, response);
     }
 

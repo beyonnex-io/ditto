@@ -14,6 +14,9 @@ package org.eclipse.ditto.things.model.devops.commands;
 
 import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Collections;
 
 import javax.annotation.concurrent.Immutable;
 
@@ -28,8 +31,8 @@ import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.json.JsonPointer;
 import org.eclipse.ditto.json.JsonValue;
 import org.eclipse.ditto.things.model.devops.WotValidationConfigId;
-import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.things.model.devops.ImmutableWotValidationConfig;
+import org.eclipse.ditto.base.model.signals.commands.CommandResponseHttpStatusValidator;
 
 /**
  * Response to a {@link ModifyWotValidationConfig} command.
@@ -49,12 +52,23 @@ public final class ModifyWotValidationConfigResponse extends AbstractWotValidati
      */
     public static final String TYPE = WotValidationConfigCommandResponse.TYPE_PREFIX + NAME;
 
+    private static final Set<HttpStatus> HTTP_STATUSES;
+
+    static {
+        final Set<HttpStatus> httpStatuses = new HashSet<>();
+        Collections.addAll(httpStatuses, HttpStatus.CREATED, HttpStatus.OK, HttpStatus.NO_CONTENT);
+        HTTP_STATUSES = Collections.unmodifiableSet(httpStatuses);
+    }
+
     private final JsonValue validationConfig;
     private final WotValidationConfigId configId;
 
     private ModifyWotValidationConfigResponse(final WotValidationConfigId configId, final JsonValue validationConfig,
+            final HttpStatus httpStatus,
             final DittoHeaders dittoHeaders) {
-        super(TYPE, HttpStatus.OK, configId, dittoHeaders);
+        super(TYPE, CommandResponseHttpStatusValidator.validateHttpStatus(httpStatus,
+                HTTP_STATUSES,
+                ModifyWotValidationConfigResponse.class), configId, dittoHeaders);
         this.validationConfig = Objects.requireNonNull(validationConfig, "validationConfig");
         this.configId = configId;
     }
@@ -70,20 +84,26 @@ public final class ModifyWotValidationConfigResponse extends AbstractWotValidati
      */
     public static ModifyWotValidationConfigResponse of(final WotValidationConfigId configId, final JsonValue validationConfig,
             final DittoHeaders dittoHeaders) {
-        return new ModifyWotValidationConfigResponse(configId, validationConfig, dittoHeaders);
+        return new ModifyWotValidationConfigResponse(configId, validationConfig, HttpStatus.OK, dittoHeaders);
     }
 
+    public static ModifyWotValidationConfigResponse modified(final WotValidationConfigId configId,
+            final DittoHeaders dittoHeaders) {
+        return new ModifyWotValidationConfigResponse(configId, JsonValue.nullLiteral(), HttpStatus.NO_CONTENT, dittoHeaders);
+    }
     /**
      * Returns a new instance of {@code ModifyWotValidationConfigResponse} for a created config.
      *
      * @param configId the ID of the WoT validation config.
+     * @param validationConfig the validation config.
      * @param dittoHeaders the headers of the response.
      * @return a new ModifyWotValidationConfigResponse.
      * @throws NullPointerException if any argument is {@code null}.
      */
     public static ModifyWotValidationConfigResponse created(final WotValidationConfigId configId,
+            final JsonValue validationConfig,
             final DittoHeaders dittoHeaders) {
-        return new ModifyWotValidationConfigResponse(configId, JsonFactory.newObject(), dittoHeaders);
+        return new ModifyWotValidationConfigResponse(configId, validationConfig, HttpStatus.CREATED, dittoHeaders);
     }
 
     /**
@@ -98,7 +118,7 @@ public final class ModifyWotValidationConfigResponse extends AbstractWotValidati
     public static ModifyWotValidationConfigResponse modified(final WotValidationConfigId configId,
             final ImmutableWotValidationConfig validationConfig,
             final DittoHeaders dittoHeaders) {
-        return new ModifyWotValidationConfigResponse(configId, validationConfig.toJson(), dittoHeaders);
+        return of(configId, validationConfig.toJson(), dittoHeaders);
     }
 
     /**
@@ -173,7 +193,7 @@ public final class ModifyWotValidationConfigResponse extends AbstractWotValidati
 
     @Override
     public ModifyWotValidationConfigResponse setDittoHeaders(final DittoHeaders dittoHeaders) {
-        return of(configId, validationConfig, dittoHeaders);
+        return new ModifyWotValidationConfigResponse(configId, validationConfig, getHttpStatus(), dittoHeaders);
     }
 
     @Override

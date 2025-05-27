@@ -109,19 +109,11 @@ final class ModifyDynamicConfigSectionStrategy extends AbstractWotValidationConf
 
         LOGGER.info("Received ModifyDynamicConfigSection: scopeId={}, newSection={}", scopeId, newSection.toJson());
 
-        if (entity == null) {
-            return ResultFactory.newErrorResult(
-                    WotValidationConfigNotAccessibleException.newBuilder(command.getEntityId())
-                            .description("No WoT validation config found for id: " + command.getEntityId())
-                            .dittoHeaders(dittoHeaders)
-                            .build(),
-                    command
-            );
-        }
-
+        // First validate the scope ID
         if (!newSection.getScopeId().equals(scopeId)) {
+            LOGGER.error("Scope ID mismatch: command scopeId={}, section scopeId={}", scopeId, newSection.getScopeId());
             return ResultFactory.newErrorResult(
-                    WotValidationConfigNotAccessibleException.newBuilder(command.getEntityId())
+                    WotValidationConfigNotAccessibleException.newBuilderForScope(scopeId)
                             .description("Scope ID mismatch: command scopeId=" + scopeId +
                                     ", section scopeId=" + newSection.getScopeId())
                             .dittoHeaders(dittoHeaders)
@@ -130,28 +122,53 @@ final class ModifyDynamicConfigSectionStrategy extends AbstractWotValidationConf
             );
         }
 
-        List<ImmutableDynamicValidationConfig> updatedDynamicConfig = new ArrayList<>();
-        boolean replaced = false;
+        // Then handle the config creation/update
+        final ImmutableWotValidationConfig configToSave;
+        final boolean isNewConfig;
 
-        for (ImmutableDynamicValidationConfig section : entity.getDynamicConfig()) {
-            if (section.getScopeId().equals(scopeId)) {
-                updatedDynamicConfig.add(newSection);
-                replaced = true;
-            } else {
-                updatedDynamicConfig.add(section);
+        if (entity == null) {
+            // Create a new global config with just this dynamic section
+            LOGGER.info("No global WoT validation config found, creating new one with dynamic section for scope: {}", scopeId);
+            configToSave = ImmutableWotValidationConfig.of(
+                    command.getEntityId(),
+                    null, // enabled
+                    null, // logWarningInsteadOfFailingApiCalls
+                    null, // thingConfig
+                    null, // featureConfig
+                    List.of(newSection), // dynamicConfig
+                    WotValidationConfigRevision.of(nextRevision),
+                    now, // created
+                    now, // modified
+                    false, // deleted
+                    metadata
+            );
+            isNewConfig = true;
+        } else {
+            // Update existing config
+            List<ImmutableDynamicValidationConfig> updatedDynamicConfig = new ArrayList<>();
+            boolean replaced = false;
+
+            for (ImmutableDynamicValidationConfig section : entity.getDynamicConfig()) {
+                if (section.getScopeId().equals(scopeId)) {
+                    updatedDynamicConfig.add(newSection);
+                    replaced = true;
+                } else {
+                    updatedDynamicConfig.add(section);
+                }
             }
-        }
 
-        if (!replaced) {
-            updatedDynamicConfig.add(newSection);
-        }
+            if (!replaced) {
+                updatedDynamicConfig.add(newSection);
+            }
 
-        final ImmutableWotValidationConfig configWithMetadata = createWotValidationConfig(entity, updatedDynamicConfig,
-                WotValidationConfigRevision.of(nextRevision), now, metadata);
+            configToSave = createWotValidationConfig(entity, updatedDynamicConfig,
+                    WotValidationConfigRevision.of(nextRevision), now, metadata);
+            isNewConfig = !replaced;
+        }
 
         final WotValidationConfigEvent<?> event = WotValidationConfigModified.of(
                 command.getEntityId(),
-                configWithMetadata,
+                configToSave,
                 nextRevision,
                 now,
                 dittoHeaders,
@@ -159,32 +176,43 @@ final class ModifyDynamicConfigSectionStrategy extends AbstractWotValidationConf
         );
 
         try {
-            ddata.add(configWithMetadata)
-                    .thenRun(() -> LOGGER.info("Successfully updated DData with merged config"))
+            ddata.add(configToSave)
+                    .thenRun(() -> LOGGER.info("Successfully {} global config with dynamic section",
+                            isNewConfig ? "created new" : "updated"))
                     .exceptionally(error -> {
-                        LOGGER.error("Failed to update DData with merged config: {}",
+                        LOGGER.error("Failed to {} global config: {}",
+                                isNewConfig ? "create new" : "update",
                                 error instanceof CompletionException ? error.getCause().getMessage() : error.getMessage());
                         return null;
                     });
         } catch (Exception e) {
-            LOGGER.error("Error while updating DData: {}", e.getMessage(), e);
+            LOGGER.error("Error while {} global config: {}",
+                    isNewConfig ? "creating new" : "updating", e.getMessage(), e);
             return ResultFactory.newErrorResult(
-                    WotValidationConfigNotAccessibleException.newBuilder(command.getEntityId())
-                            .description("Failed to update WoT validation config: " + e.getMessage())
+                    WotValidationConfigNotAccessibleException.newBuilderForScope(scopeId)
+                            .description("Failed to " + (isNewConfig ? "create new" : "update") +
+                                    " WoT validation config: " + e.getMessage())
                             .dittoHeaders(dittoHeaders)
                             .build(),
                     command
             );
         }
 
-        final ModifyWotValidationConfigResponse response = ModifyWotValidationConfigResponse.of(
-                command.getEntityId(),
-                configWithMetadata.toJson(),
-                createCommandResponseDittoHeaders(dittoHeaders, nextRevision));
-
-        // Set becameCreated to true if the section was newly created (not replaced), otherwise false
-        final boolean becameCreated = !replaced;
-        return ResultFactory.newMutationResult(command, event, response, becameCreated, false);
+        final ModifyWotValidationConfigResponse response;
+        if (isNewConfig) {
+            response = ModifyWotValidationConfigResponse.created(
+                    command.getEntityId(),
+                    configToSave.toJson(),
+                    createCommandResponseDittoHeaders(dittoHeaders, nextRevision)
+            );
+        } else {
+            response = ModifyWotValidationConfigResponse.modified(
+                    command.getEntityId(),
+                    configToSave,
+                    createCommandResponseDittoHeaders(dittoHeaders, nextRevision)
+            );
+        }
+        return ResultFactory.newMutationResult(command, event, response, isNewConfig, false);
     }
 
     @Override

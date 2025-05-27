@@ -39,8 +39,10 @@ public final class WotValidationConfigNotAccessibleException extends DittoRuntim
     public static final String ERROR_CODE = ThingException.ERROR_CODE_PREFIX + "wot.validation.config.notaccessible";
 
     private static final String MESSAGE_TEMPLATE = "The WoT validation config with ID ''{0}'' was not accessible!";
+    private static final String SCOPE_MESSAGE_TEMPLATE = "The dynamic config section with scope ''{0}'' was not found!";
 
     private static final String DEFAULT_DESCRIPTION = "Check if the ID of your requested config was correct.";
+    private static final String SCOPE_DEFAULT_DESCRIPTION = "Check if the scope ID of your requested dynamic config section was correct.";
 
     private static final long serialVersionUID = -7806344741546228641L;
 
@@ -60,6 +62,16 @@ public final class WotValidationConfigNotAccessibleException extends DittoRuntim
      */
     public static Builder newBuilder(final WotValidationConfigId configId) {
         return new Builder(configId);
+    }
+
+    /**
+     * A mutable builder for a {@code WotValidationConfigNotAccessibleException} for scope-specific errors.
+     *
+     * @param scopeId the scope ID of the dynamic config section.
+     * @return the builder.
+     */
+    public static Builder newBuilderForScope(final String scopeId) {
+        return new Builder(scopeId);
     }
 
     /**
@@ -116,6 +128,11 @@ public final class WotValidationConfigNotAccessibleException extends DittoRuntim
         private Builder(final WotValidationConfigId configId) {
             this();
             message(MessageFormat.format(MESSAGE_TEMPLATE, String.valueOf(configId)));
+        }
+
+        private Builder(final String scopeId) {
+            description(SCOPE_DEFAULT_DESCRIPTION);
+            message(MessageFormat.format(SCOPE_MESSAGE_TEMPLATE, scopeId));
         }
 
         @Override
