@@ -13,13 +13,22 @@
 
 package org.eclipse.ditto.things.model.devops;
 
-import org.eclipse.ditto.base.model.json.Jsonifiable;
-import org.eclipse.ditto.json.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 import javax.annotation.concurrent.Immutable;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import org.eclipse.ditto.json.JsonArray;
+import org.eclipse.ditto.json.JsonArrayBuilder;
+import org.eclipse.ditto.json.JsonFactory;
+import org.eclipse.ditto.json.JsonFieldDefinition;
+import org.eclipse.ditto.json.JsonObject;
+import org.eclipse.ditto.json.JsonObjectBuilder;
+import org.eclipse.ditto.json.JsonValue;
 
 /**
  * Immutable value object representing the validation context for dynamic WoT (Web of Things) validation configuration.
@@ -88,30 +97,22 @@ public final class ImmutableValidationContext implements ValidationContext {
         return new ImmutableValidationContext(dittoHeadersPatterns, thingDefinitionPatterns, featureDefinitionPatterns, scopeId);
     }
 
-    /**
-     * @return list of header pattern maps to match.
-     */
+    @Override
     public List<Map<String, String>> getDittoHeadersPatterns() {
         return dittoHeadersPatterns;
     }
 
-    /**
-     * @return list of regex patterns for Thing definition URLs.
-     */
+    @Override
     public List<String> getThingDefinitionPatterns() {
         return thingDefinitionPatterns;
     }
 
-    /**
-     * @return list of regex patterns for Feature definition URLs.
-     */
+    @Override
     public List<String> getFeatureDefinitionPatterns() {
         return featureDefinitionPatterns;
     }
 
-    /**
-     * @return the scope ID.
-     */
+    @Override
     public String getScopeId() {
         return scopeId;
     }
@@ -151,7 +152,7 @@ public final class ImmutableValidationContext implements ValidationContext {
                                 .collect(Collectors.toList()))
                         .build());
 
-        if (scopeId != null && !scopeId.isEmpty()) {
+        if (!scopeId.isEmpty()) {
             builder.set(SCOPE_ID_FIELD, scopeId);
         }
 

@@ -12,19 +12,19 @@
  */
 package org.eclipse.ditto.things.model.devops;
 
-import org.eclipse.ditto.base.model.json.Jsonifiable;
+import java.util.Objects;
+import java.util.Optional;
+
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.Immutable;
+
+import org.eclipse.ditto.base.model.json.FieldType;
+import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
 import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonFieldDefinition;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.json.JsonValue;
-import org.eclipse.ditto.base.model.json.FieldType;
-import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
-
-import javax.annotation.concurrent.Immutable;
-import java.util.Objects;
-import java.util.Optional;
-import javax.annotation.Nullable;
 
 /**
  * Immutable value object representing configuration overrides for WoT (Web of Things) validation.
@@ -81,41 +81,21 @@ public final class ImmutableConfigOverrides implements ConfigOverrides{
         return new ImmutableConfigOverrides(enabled, logWarningInsteadOfFailing, thingConfig, featureConfig);
     }
 
-    /**
-     * Returns the override for the global enabled flag.
-     *
-     * @return an optional containing the override value
-     */
     @Override
     public Optional<Boolean> getEnabled() {
         return Optional.ofNullable(enabled);
     }
 
-    /**
-     * Returns the override for the global log warning flag.
-     *
-     * @return an optional containing the override value
-     */
     @Override
     public Optional<Boolean> getLogWarningInsteadOfFailing() {
         return Optional.ofNullable(logWarningInsteadOfFailing);
     }
 
-    /**
-     * Returns the Thing-level config overrides.
-     *
-     * @return an optional containing the Thing-level config overrides
-     */
     @Override
     public Optional<ThingValidationConfig> getThingConfig() {
         return Optional.ofNullable(thingConfig);
     }
 
-    /**
-     * Returns the Feature-level config overrides.
-     *
-     * @return an optional containing the Feature-level config overrides
-     */
     @Override
     public Optional<FeatureValidationConfig> getFeatureConfig() {
         return Optional.ofNullable(featureConfig);
@@ -147,10 +127,6 @@ public final class ImmutableConfigOverrides implements ConfigOverrides{
      * @throws IllegalArgumentException if the JSON object is invalid
      */
     public static ImmutableConfigOverrides fromJson(final JsonObject jsonObject) {
-        if (jsonObject == null) {
-            throw new IllegalArgumentException("JSON object must not be null");
-        }
-
         final Boolean enabled = jsonObject.getValue(ENABLED_FIELD)
                 .orElse(null);
 

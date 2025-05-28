@@ -12,19 +12,19 @@
  */
 package org.eclipse.ditto.things.model.devops;
 
-import org.eclipse.ditto.base.model.json.Jsonifiable;
+import java.util.Objects;
+import java.util.Optional;
+
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.Immutable;
+
+import org.eclipse.ditto.base.model.json.FieldType;
+import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
 import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonFieldDefinition;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.json.JsonValue;
-import org.eclipse.ditto.base.model.json.FieldType;
-import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
-
-import javax.annotation.concurrent.Immutable;
-import java.util.Objects;
-import java.util.Optional;
-import javax.annotation.Nullable;
 
 /**
  * Immutable value object representing thing-level configuration for WoT (Web of Things) validation.
@@ -67,20 +67,12 @@ public final class ImmutableThingValidationConfig implements ThingValidationConf
         return new ImmutableThingValidationConfig(enforce, forbid);
     }
 
-    /**
-     * Returns the enforce configuration.
-     *
-     * @return an optional containing the enforce configuration
-     */
+    @Override
     public Optional<ThingValidationEnforceConfig> getEnforce() {
         return Optional.ofNullable(enforce);
     }
 
-    /**
-     * Returns the forbid configuration.
-     *
-     * @return an optional containing the forbid configuration
-     */
+    @Override
     public Optional<ThingValidationForbidConfig> getForbid() {
         return Optional.ofNullable(forbid);
     }
@@ -107,37 +99,19 @@ public final class ImmutableThingValidationConfig implements ThingValidationConf
      * @throws IllegalArgumentException if the JSON object is invalid
      */
     public static ImmutableThingValidationConfig fromJson(final JsonObject jsonObject) {
-        if (jsonObject == null) {
-            throw new IllegalArgumentException("JSON object must not be null");
-        }
-
-
         final ImmutableThingValidationEnforceConfig enforce = jsonObject.getValue(ENFORCE_FIELD)
                 .filter(JsonValue::isObject)
                 .map(JsonValue::asObject)
-                .map(obj -> {
-                    try {
-                        return ImmutableThingValidationEnforceConfig.fromJson(obj);
-                    } catch (final Exception e) {
-                        throw new IllegalArgumentException("Failed to parse enforce config: " + e.getMessage(), e);
-                    }
-                })
+                .map(ImmutableThingValidationEnforceConfig::fromJson)
                 .orElse(null);
 
         final ImmutableThingValidationForbidConfig forbid = jsonObject.getValue(FORBID_FIELD)
                 .filter(JsonValue::isObject)
                 .map(JsonValue::asObject)
-                .map(obj -> {
-                    try {
-                        return ImmutableThingValidationForbidConfig.fromJson(obj);
-                    } catch (final Exception e) {
-                        throw new IllegalArgumentException("Failed to parse forbid config: " + e.getMessage(), e);
-                    }
-                })
+                .map(ImmutableThingValidationForbidConfig::fromJson)
                 .orElse(null);
 
-        final ImmutableThingValidationConfig result = of(enforce, forbid);
-        return result;
+        return of(enforce, forbid);
     }
 
     @Override

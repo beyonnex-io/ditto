@@ -12,18 +12,18 @@
  */
 package org.eclipse.ditto.things.model.devops;
 
-import org.eclipse.ditto.base.model.json.Jsonifiable;
+import java.util.Objects;
+import java.util.Optional;
+
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.Immutable;
+
+import org.eclipse.ditto.base.model.json.FieldType;
+import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
 import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonFieldDefinition;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
-import org.eclipse.ditto.base.model.json.FieldType;
-import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
-
-import javax.annotation.concurrent.Immutable;
-import java.util.Objects;
-import java.util.Optional;
-import javax.annotation.Nullable;
 
 /**
  * Immutable value object representing feature-level enforce configuration for WoT (Web of Things) validation.
@@ -108,65 +108,37 @@ public final class ImmutableFeatureValidationEnforceConfig implements FeatureVal
                 outboxMessages);
     }
 
-    /**
-     * Returns whether feature description modification is enforced.
-     *
-     * @return an optional containing whether feature description modification is enforced
-     */
+    @Override
     public Optional<Boolean> isFeatureDescriptionModification() {
         return Optional.ofNullable(featureDescriptionModification);
     }
 
-    /**
-     * Returns whether presence of modeled features is enforced.
-     *
-     * @return an optional containing whether presence of modeled features is enforced
-     */
+    @Override
     public Optional<Boolean> isPresenceOfModeledFeatures() {
         return Optional.ofNullable(presenceOfModeledFeatures);
     }
 
-    /**
-     * Returns whether properties are enforced.
-     *
-     * @return an optional containing whether properties are enforced
-     */
+    @Override
     public Optional<Boolean> isProperties() {
         return Optional.ofNullable(properties);
     }
 
-    /**
-     * Returns whether desired properties are enforced.
-     *
-     * @return an optional containing whether desired properties are enforced
-     */
+    @Override
     public Optional<Boolean> isDesiredProperties() {
         return Optional.ofNullable(desiredProperties);
     }
 
-    /**
-     * Returns whether inbox messages input is enforced.
-     *
-     * @return an optional containing whether inbox messages input is enforced
-     */
+    @Override
     public Optional<Boolean> isInboxMessagesInput() {
         return Optional.ofNullable(inboxMessagesInput);
     }
 
-    /**
-     * Returns whether inbox messages output is enforced.
-     *
-     * @return an optional containing whether inbox messages output is enforced
-     */
+    @Override
     public Optional<Boolean> isInboxMessagesOutput() {
         return Optional.ofNullable(inboxMessagesOutput);
     }
 
-    /**
-     * Returns whether outbox messages are enforced.
-     *
-     * @return an optional containing whether outbox messages are enforced
-     */
+    @Override
     public Optional<Boolean> isOutboxMessages() {
         return Optional.ofNullable(outboxMessages);
     }
@@ -200,14 +172,8 @@ public final class ImmutableFeatureValidationEnforceConfig implements FeatureVal
      * @param jsonObject the JSON object to create the configuration from
      * @return a new instance created from the JSON object
      * @throws NullPointerException if {@code jsonObject} is {@code null}
-     * @throws IllegalArgumentException if the JSON object is invalid
      */
     public static ImmutableFeatureValidationEnforceConfig fromJson(final JsonObject jsonObject) {
-        if (jsonObject == null) {
-            throw new IllegalArgumentException("JSON object must not be null");
-        }
-
-
         final Boolean featureDescriptionModification = jsonObject.getValue(FEATURE_DESCRIPTION_MODIFICATION)
                 .orElse(null);
 
@@ -229,15 +195,15 @@ public final class ImmutableFeatureValidationEnforceConfig implements FeatureVal
         final Boolean outboxMessages = jsonObject.getValue(OUTBOX_MESSAGES)
                 .orElse(null);
 
-        final ImmutableFeatureValidationEnforceConfig result = of(
+        return of(
                 featureDescriptionModification,
                 presenceOfModeledFeatures,
                 properties,
                 desiredProperties,
                 inboxMessagesInput,
                 inboxMessagesOutput,
-                outboxMessages);
-        return result;
+                outboxMessages
+        );
     }
 
     @Override

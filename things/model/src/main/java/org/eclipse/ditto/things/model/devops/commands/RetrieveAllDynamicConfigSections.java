@@ -12,16 +12,13 @@
  */
 package org.eclipse.ditto.things.model.devops.commands;
 
-import java.util.function.Predicate;
 import javax.annotation.concurrent.Immutable;
 
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.base.model.json.JsonParsableCommand;
-import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
-import org.eclipse.ditto.json.JsonObject;
-import org.eclipse.ditto.json.JsonObjectBuilder;
-import org.eclipse.ditto.json.JsonPointer;
 import org.eclipse.ditto.base.model.signals.commands.Command;
+import org.eclipse.ditto.json.JsonObject;
+import org.eclipse.ditto.json.JsonPointer;
 import org.eclipse.ditto.things.model.devops.WotValidationConfigId;
 
 /**
@@ -100,12 +97,6 @@ public final class RetrieveAllDynamicConfigSections extends AbstractWotValidatio
     @Override
     public RetrieveAllDynamicConfigSections setDittoHeaders(final DittoHeaders dittoHeaders) {
         return of(getEntityId(), dittoHeaders);
-    }
-
-    @Override
-    protected void appendPayload(final JsonObjectBuilder jsonObjectBuilder, final JsonSchemaVersion schemaVersion,
-                                 final Predicate<org.eclipse.ditto.json.JsonField> predicate) {
-        super.appendPayload(jsonObjectBuilder, schemaVersion, predicate);
     }
 
     @Override

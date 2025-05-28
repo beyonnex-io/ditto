@@ -12,18 +12,18 @@
  */
 package org.eclipse.ditto.things.model.devops;
 
-import org.eclipse.ditto.base.model.json.Jsonifiable;
+import java.util.Objects;
+import java.util.Optional;
+
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.Immutable;
+
+import org.eclipse.ditto.base.model.json.FieldType;
+import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
 import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonFieldDefinition;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
-import org.eclipse.ditto.base.model.json.FieldType;
-import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
-
-import javax.annotation.concurrent.Immutable;
-import java.util.Objects;
-import java.util.Optional;
-import javax.annotation.Nullable;
 
 /**
  * Immutable value object representing thing-level forbid configuration for WoT (Web of Things) validation.
@@ -84,40 +84,22 @@ public final class ImmutableThingValidationForbidConfig implements ThingValidati
                 nonModeledOutboxMessages);
     }
 
-    /**
-     * Returns whether thing description deletion is forbidden.
-     *
-     * @return an optional containing whether thing description deletion is forbidden
-     */
+    @Override
     public Optional<Boolean> isThingDescriptionDeletion() {
         return Optional.ofNullable(thingDescriptionDeletion);
     }
 
-
-    /**
-     * Returns whether non-modeled properties are forbidden.
-     *
-     * @return an optional containing whether non-modeled properties are forbidden
-     */
+    @Override
     public Optional<Boolean> isNonModeledProperties() {
         return Optional.ofNullable(nonModeledProperties);
     }
 
-
-    /**
-     * Returns whether non-modeled inbox messages are forbidden.
-     *
-     * @return an optional containing whether non-modeled inbox messages are forbidden
-     */
+    @Override
     public Optional<Boolean> isNonModeledInboxMessages() {
         return Optional.ofNullable(nonModeledInboxMessages);
     }
 
-    /**
-     * Returns whether non-modeled outbox messages are forbidden.
-     *
-     * @return an optional containing whether non-modeled outbox messages are forbidden
-     */
+    @Override
     public Optional<Boolean> isNonModeledOutboxMessages() {
         return Optional.ofNullable(nonModeledOutboxMessages);
     }
@@ -147,14 +129,8 @@ public final class ImmutableThingValidationForbidConfig implements ThingValidati
      * @param jsonObject the JSON object to create the configuration from
      * @return a new instance created from the JSON object
      * @throws NullPointerException if {@code jsonObject} is {@code null}
-     * @throws IllegalArgumentException if the JSON object is invalid
      */
     public static ImmutableThingValidationForbidConfig fromJson(final JsonObject jsonObject) {
-        if (jsonObject == null) {
-            throw new IllegalArgumentException("JSON object must not be null");
-        }
-
-
         final Boolean thingDescriptionDeletion = jsonObject.getValue(THING_DESCRIPTION_DELETION)
                 .orElse(null);
 
@@ -167,12 +143,12 @@ public final class ImmutableThingValidationForbidConfig implements ThingValidati
         final Boolean nonModeledOutboxMessages = jsonObject.getValue(NON_MODELED_OUTBOX_MESSAGES)
                 .orElse(null);
 
-        final ImmutableThingValidationForbidConfig result = of(
+        return of(
                 thingDescriptionDeletion,
                 nonModeledProperties,
                 nonModeledInboxMessages,
-                nonModeledOutboxMessages);
-        return result;
+                nonModeledOutboxMessages
+        );
     }
 
     @Override

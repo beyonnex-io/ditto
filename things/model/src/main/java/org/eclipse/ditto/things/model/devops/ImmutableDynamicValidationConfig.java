@@ -14,17 +14,17 @@ package org.eclipse.ditto.things.model.devops;
 
 import java.util.Objects;
 import java.util.Optional;
+
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
+import org.eclipse.ditto.base.model.json.FieldType;
+import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
 import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonFieldDefinition;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.json.JsonValue;
-import org.eclipse.ditto.base.model.json.FieldType;
-import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
-import org.eclipse.ditto.base.model.json.Jsonifiable;
 import org.eclipse.ditto.things.model.devops.exceptions.WotValidationConfigInvalidException;
 
 /**
@@ -91,14 +91,9 @@ public final class ImmutableDynamicValidationConfig implements DynamicValidation
      * @param jsonObject the JSON object to create the configuration from
      * @return a new instance created from the JSON object
      * @throws NullPointerException if {@code jsonObject} is {@code null}
-     * @throws IllegalArgumentException if the JSON object is invalid
+     * @throws WotValidationConfigInvalidException if the JSON object is invalid
      */
     public static ImmutableDynamicValidationConfig fromJson(final JsonObject jsonObject) {
-        if (jsonObject == null) {
-            throw WotValidationConfigInvalidException.newBuilder("JSON object must not be null")
-                    .build();
-        }
-
         final String scopeId = jsonObject.getValue(SCOPE_ID_FIELD)
                 .orElseThrow(() -> WotValidationConfigInvalidException.newBuilder("Missing required field: scopeId")
                         .build());
@@ -118,14 +113,17 @@ public final class ImmutableDynamicValidationConfig implements DynamicValidation
         return of(scopeId, validationContext, configOverrides);
     }
 
+    @Override
     public String getScopeId() {
         return scopeId;
     }
 
+    @Override
     public Optional<ValidationContext> getValidationContext() {
         return Optional.ofNullable(validationContext);
     }
 
+    @Override
     public Optional<ConfigOverrides> getConfigOverrides() {
         return Optional.ofNullable(configOverrides);
     }

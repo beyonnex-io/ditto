@@ -21,15 +21,15 @@ import org.eclipse.ditto.base.model.headers.DittoHeaders;
 import org.eclipse.ditto.base.model.json.FieldType;
 import org.eclipse.ditto.base.model.json.JsonParsableCommand;
 import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
+import org.eclipse.ditto.base.model.signals.commands.Command;
 import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonField;
 import org.eclipse.ditto.json.JsonFieldDefinition;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
-import org.eclipse.ditto.things.model.devops.WotValidationConfigId;
-import org.eclipse.ditto.things.model.devops.ImmutableDynamicValidationConfig;
 import org.eclipse.ditto.json.JsonPointer;
-import org.eclipse.ditto.base.model.signals.commands.Command;
+import org.eclipse.ditto.things.model.devops.ImmutableDynamicValidationConfig;
+import org.eclipse.ditto.things.model.devops.WotValidationConfigId;
 import org.eclipse.ditto.things.model.devops.exceptions.WotValidationConfigInvalidException;
 
 /**
@@ -125,7 +125,7 @@ public final class ModifyDynamicConfigSection extends AbstractWotValidationConfi
      * @param dittoHeaders the headers of the command.
      * @return the new instance.
      * @throws NullPointerException if any argument is {@code null}.
-     * @throws org.eclipse.ditto.things.model.devops.commands.WotValidationConfigInvalidException if any required field is missing or invalid.
+     * @throws WotValidationConfigInvalidException if any required field is missing or invalid.
      */
     public static ModifyDynamicConfigSection fromJson(final JsonObject jsonObject, final DittoHeaders dittoHeaders) {
         if (!jsonObject.getValue(SCOPE_ID).isPresent()) {

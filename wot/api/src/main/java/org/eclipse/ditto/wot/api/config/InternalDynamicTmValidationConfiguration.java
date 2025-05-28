@@ -163,7 +163,7 @@ final class InternalDynamicTmValidationConfiguration {
                 "]";
     }
 
-    public com.typesafe.config.Config configOverrides() {
+    public Config configOverrides() {
         return configOverrides;
     }
 

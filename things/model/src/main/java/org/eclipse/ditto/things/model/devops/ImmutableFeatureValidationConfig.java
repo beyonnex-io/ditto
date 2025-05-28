@@ -12,19 +12,19 @@
  */
 package org.eclipse.ditto.things.model.devops;
 
-import org.eclipse.ditto.base.model.json.Jsonifiable;
+import java.util.Objects;
+import java.util.Optional;
+
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.Immutable;
+
+import org.eclipse.ditto.base.model.json.FieldType;
+import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
 import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonFieldDefinition;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
 import org.eclipse.ditto.json.JsonValue;
-import org.eclipse.ditto.base.model.json.FieldType;
-import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
-
-import javax.annotation.concurrent.Immutable;
-import java.util.Objects;
-import java.util.Optional;
-import javax.annotation.Nullable;
 
 /**
  * Immutable value object representing feature-level configuration for WoT (Web of Things) validation.
@@ -67,20 +67,12 @@ public final class ImmutableFeatureValidationConfig implements FeatureValidation
         return new ImmutableFeatureValidationConfig(enforce, forbid);
     }
 
-    /**
-     * Returns the enforce configuration.
-     *
-     * @return an optional containing the enforce configuration
-     */
+    @Override
     public Optional<FeatureValidationEnforceConfig> getEnforce() {
         return Optional.ofNullable(enforce);
     }
 
-    /**
-     * Returns the forbid configuration.
-     *
-     * @return an optional containing the forbid configuration
-     */
+    @Override
     public Optional<FeatureValidationForbidConfig> getForbid() {
         return Optional.ofNullable(forbid);
     }
@@ -107,20 +99,10 @@ public final class ImmutableFeatureValidationConfig implements FeatureValidation
      * @throws IllegalArgumentException if the JSON object is invalid
      */
     public static ImmutableFeatureValidationConfig fromJson(final JsonObject jsonObject) {
-        if (jsonObject == null) {
-            throw new IllegalArgumentException("JSON object must not be null");
-        }
-
         final ImmutableFeatureValidationEnforceConfig enforce = jsonObject.getValue(ENFORCE_FIELD)
                 .filter(JsonValue::isObject)
                 .map(JsonValue::asObject)
-                .map(obj -> {
-                    try {
-                        return ImmutableFeatureValidationEnforceConfig.fromJson(obj);
-                    } catch (final Exception e) {
-                        throw new IllegalArgumentException("Failed to parse enforce config: " + e.getMessage(), e);
-                    }
-                })
+                .map(ImmutableFeatureValidationEnforceConfig::fromJson)
                 .orElse(null);
 
         final ImmutableFeatureValidationForbidConfig forbid = jsonObject.getValue(FORBID_FIELD)
@@ -135,8 +117,7 @@ public final class ImmutableFeatureValidationConfig implements FeatureValidation
                 })
                 .orElse(null);
 
-        final ImmutableFeatureValidationConfig result = of(enforce, forbid);
-        return result;
+        return of(enforce, forbid);
     }
 
     @Override

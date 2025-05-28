@@ -47,10 +47,10 @@ import org.eclipse.ditto.json.JsonPointer;
 import org.eclipse.ditto.json.JsonValue;
 import org.eclipse.ditto.things.model.devops.ImmutableWotValidationConfig;
 import org.eclipse.ditto.things.model.devops.WotValidationConfigId;
-import org.eclipse.ditto.things.model.devops.commands.RetrieveWotValidationConfig;
-import org.eclipse.ditto.things.model.devops.commands.ModifyWotValidationConfig;
 import org.eclipse.ditto.things.model.devops.commands.DeleteWotValidationConfig;
+import org.eclipse.ditto.things.model.devops.commands.ModifyWotValidationConfig;
 import org.eclipse.ditto.things.model.devops.commands.RetrieveMergedWotValidationConfig;
+import org.eclipse.ditto.things.model.devops.commands.RetrieveWotValidationConfig;
 import org.eclipse.ditto.things.model.devops.exceptions.WotValidationConfigInvalidException;
 
 /**
@@ -135,7 +135,7 @@ public final class DevOpsRoute extends AbstractRoute {
                                                 config(ctx, createHeaders(queryParameters))
                                 ),
                                 rawPathPrefix(PathMatchers.slash().concat(PATH_WOT),
-                                        () -> // /wot/config
+                                        () -> // /devops/wot
                                                 wotRoutes(ctx, createHeaders(queryParameters))
                                 )
                         )

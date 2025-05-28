@@ -12,6 +12,7 @@
  */
 package org.eclipse.ditto.wot.api.config;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -21,6 +22,9 @@ import javax.annotation.concurrent.Immutable;
 import org.eclipse.ditto.internal.utils.config.ConfigWithFallback;
 import org.eclipse.ditto.internal.utils.config.DefaultScopedConfig;
 import org.eclipse.ditto.internal.utils.config.ScopedConfig;
+import org.eclipse.ditto.json.JsonFactory;
+import org.eclipse.ditto.json.JsonObject;
+import org.eclipse.ditto.things.model.devops.ImmutableDynamicValidationConfig;
 import org.eclipse.ditto.wot.validation.ValidationContext;
 import org.eclipse.ditto.wot.validation.config.FeatureValidationConfig;
 import org.eclipse.ditto.wot.validation.config.ThingValidationConfig;
@@ -28,6 +32,7 @@ import org.eclipse.ditto.wot.validation.config.TmValidationConfig;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.ConfigRenderOptions;
 
 /**
  * This class is the default implementation of the WoT (Web of Things) {@link org.eclipse.ditto.wot.validation.config.TmValidationConfig}.
@@ -158,44 +163,44 @@ public final class DefaultTmValidationConfig implements TmValidationConfig {
     }
 
     @Override
-    public java.util.List<org.eclipse.ditto.things.model.devops.ImmutableDynamicValidationConfig> getDynamicConfig() {
+    public List<ImmutableDynamicValidationConfig> getDynamicConfig() {
         if (dynamicTmValidationConfigurations.isEmpty()) {
-            return java.util.Collections.emptyList();
+            return Collections.emptyList();
         }
 
         return dynamicTmValidationConfigurations.stream()
                 .map(internal -> {
                     // Build validationContext JSON
                     var contextConfig = internal.getDynamicValidationContextConfiguration();
-                    var dittoHeadersPatterns = org.eclipse.ditto.json.JsonFactory.newArrayBuilder()
+                    var dittoHeadersPatterns = JsonFactory.newArrayBuilder()
                             .addAll(contextConfig.dittoHeadersPatterns().stream()
                                     .map(map -> {
-                                        var builder = org.eclipse.ditto.json.JsonFactory.newObjectBuilder();
+                                        var builder = JsonFactory.newObjectBuilder();
                                         map.forEach((k, v) -> builder.set(k, v.pattern()));
                                         return builder.build();
                                     })
-                                    .collect(java.util.stream.Collectors.toList()))
+                                    .toList())
                             .build();
-                    var thingDefinitionPatterns = org.eclipse.ditto.json.JsonFactory.newArrayBuilder()
+                    var thingDefinitionPatterns = JsonFactory.newArrayBuilder()
                             .addAll(contextConfig.thingDefinitionPatterns().stream()
-                                    .map(p -> org.eclipse.ditto.json.JsonFactory.newValue(p.pattern()))
-                                    .collect(java.util.stream.Collectors.toList()))
+                                    .map(p -> JsonFactory.newValue(p.pattern()))
+                                    .toList())
                             .build();
-                    var featureDefinitionPatterns = org.eclipse.ditto.json.JsonFactory.newArrayBuilder()
+                    var featureDefinitionPatterns = JsonFactory.newArrayBuilder()
                             .addAll(contextConfig.featureDefinitionPatterns().stream()
-                                    .map(p -> org.eclipse.ditto.json.JsonFactory.newValue(p.pattern()))
-                                    .collect(java.util.stream.Collectors.toList()))
+                                    .map(p -> JsonFactory.newValue(p.pattern()))
+                                    .toList())
                             .build();
-                    var validationContext = org.eclipse.ditto.json.JsonFactory.newObjectBuilder()
+                    var validationContext = JsonFactory.newObjectBuilder()
                             .set("dittoHeadersPatterns", dittoHeadersPatterns)
                             .set("thingDefinitionPatterns", thingDefinitionPatterns)
                             .set("featureDefinitionPatterns", featureDefinitionPatterns)
                             .build();
 
                     // Build configOverrides JSON
-                    var configOverrides = org.eclipse.ditto.json.JsonObject.of(
+                    var configOverrides = JsonObject.of(
                             internal.configOverrides().root().render(
-                                    com.typesafe.config.ConfigRenderOptions.defaults().setComments(false).setOriginComments(false)
+                                    ConfigRenderOptions.defaults().setComments(false).setOriginComments(false)
                             )
                     );
 
@@ -208,6 +213,6 @@ public final class DefaultTmValidationConfig implements TmValidationConfig {
 
                     return org.eclipse.ditto.things.model.devops.ImmutableDynamicValidationConfig.fromJson(json);
                 })
-                .collect(java.util.stream.Collectors.toList());
+                .toList();
     }
 }

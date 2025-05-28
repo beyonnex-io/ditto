@@ -36,7 +36,7 @@ import org.eclipse.ditto.things.model.devops.ImmutableWotValidationConfig;
 /**
  * Response to a WoT validation config command.
  *
- * @since 3.0.0
+ * @since 3.8.0
  */
 @Immutable
 @JsonParsableCommandResponse(type = WotValidationConfigResponse.TYPE)

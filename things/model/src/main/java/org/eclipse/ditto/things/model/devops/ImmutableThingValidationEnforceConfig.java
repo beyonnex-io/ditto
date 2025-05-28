@@ -12,18 +12,18 @@
  */
 package org.eclipse.ditto.things.model.devops;
 
-import org.eclipse.ditto.base.model.json.Jsonifiable;
+import java.util.Objects;
+import java.util.Optional;
+
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.Immutable;
+
+import org.eclipse.ditto.base.model.json.FieldType;
+import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
 import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonFieldDefinition;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonObjectBuilder;
-import org.eclipse.ditto.base.model.json.FieldType;
-import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
-
-import javax.annotation.concurrent.Immutable;
-import java.util.Objects;
-import java.util.Optional;
-import javax.annotation.Nullable;
 
 /**
  * Immutable value object representing thing-level enforce configuration for WoT (Web of Things) validation.
@@ -96,47 +96,27 @@ public final class ImmutableThingValidationEnforceConfig implements ThingValidat
                 outboxMessages);
     }
 
-    /**
-     * Returns whether thing description modification is enforced.
-     *
-     * @return an optional containing whether thing description modification is enforced
-     */
+    @Override
     public Optional<Boolean> isThingDescriptionModification() {
         return Optional.ofNullable(thingDescriptionModification);
     }
 
-    /**
-     * Returns whether properties are enforced.
-     *
-     * @return an optional containing whether properties are enforced
-     */
+    @Override
     public Optional<Boolean> isProperties() {
         return Optional.ofNullable(properties);
     }
 
-    /**
-     * Returns whether inbox messages input is enforced.
-     *
-     * @return an optional containing whether inbox messages input is enforced
-     */
+    @Override
     public Optional<Boolean> isInboxMessagesInput() {
         return Optional.ofNullable(inboxMessagesInput);
     }
 
-    /**
-     * Returns whether inbox messages output is enforced.
-     *
-     * @return an optional containing whether inbox messages output is enforced
-     */
+    @Override
     public Optional<Boolean> isInboxMessagesOutput() {
         return Optional.ofNullable(inboxMessagesOutput);
     }
 
-    /**
-     * Returns whether outbox messages are enforced.
-     *
-     * @return an optional containing whether outbox messages are enforced
-     */
+    @Override
     public Optional<Boolean> isOutboxMessages() {
         return Optional.ofNullable(outboxMessages);
     }
@@ -171,20 +151,17 @@ public final class ImmutableThingValidationEnforceConfig implements ThingValidat
      * @throws IllegalArgumentException if the JSON object is invalid
      */
     public static ImmutableThingValidationEnforceConfig fromJson(final JsonObject jsonObject) {
-        if (jsonObject == null) {
-            throw new IllegalArgumentException("JSON object must not be null");
-        }
-
-
         final Boolean thingDescriptionModification = jsonObject.getValue(THING_DESCRIPTION_MODIFICATION)
                 .orElse(null);
 
+        // TODO this is not used
         final Boolean presenceOfModeledThings = jsonObject.getValue(PRESENCE_OF_MODELED_THINGS)
                 .orElse(null);
 
         final Boolean properties = jsonObject.getValue(PROPERTIES)
                 .orElse(null);
 
+        // TODO this is not used
         final Boolean desiredProperties = jsonObject.getValue(DESIRED_PROPERTIES)
                 .orElse(null);
 
@@ -197,13 +174,13 @@ public final class ImmutableThingValidationEnforceConfig implements ThingValidat
         final Boolean outboxMessages = jsonObject.getValue(OUTBOX_MESSAGES)
                 .orElse(null);
 
-        final ImmutableThingValidationEnforceConfig result = of(
+        return of(
                 thingDescriptionModification,
                 properties,
                 inboxMessagesInput,
                 inboxMessagesOutput,
-                outboxMessages);
-        return result;
+                outboxMessages
+        );
     }
 
     @Override
