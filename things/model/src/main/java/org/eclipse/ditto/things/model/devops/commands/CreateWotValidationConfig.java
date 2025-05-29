@@ -182,6 +182,10 @@ public final class CreateWotValidationConfig extends AbstractWotValidationConfig
                 "]";
     }
 
+    public ImmutableWotValidationConfig getValidationConfig() {
+        return validationConfig;
+    }
+
     private static final class JsonFields {
         static final JsonFieldDefinition<JsonObject> VALIDATION_CONFIG =
                 JsonFactory.newJsonObjectFieldDefinition("validationConfig", FieldType.REGULAR,

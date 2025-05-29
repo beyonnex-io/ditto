@@ -283,7 +283,7 @@ public final class WotValidationConfigUtils {
 
         return ImmutableThingValidationEnforceConfig.of(
                 mergeBoolean(dynamicConfig.isThingDescriptionModification(), staticEnforce.isThingDescriptionModification()),
-                mergeBoolean(dynamicConfig.isProperties(), staticEnforce.isProperties()),
+                mergeBoolean(dynamicConfig.isAttributes(), staticEnforce.isAttributes()),
                 mergeBoolean(dynamicConfig.isInboxMessagesInput(), staticEnforce.isInboxMessagesInput()),
                 mergeBoolean(dynamicConfig.isInboxMessagesOutput(), staticEnforce.isInboxMessagesOutput()),
                 mergeBoolean(dynamicConfig.isOutboxMessages(), staticEnforce.isOutboxMessages())
@@ -306,7 +306,7 @@ public final class WotValidationConfigUtils {
 
         return ImmutableThingValidationForbidConfig.of(
                 mergeBoolean(dynamicConfig.isThingDescriptionDeletion(), staticForbid.isThingDescriptionDeletion()),
-                mergeBoolean(dynamicConfig.isNonModeledProperties(), staticForbid.isNonModeledProperties()),
+                mergeBoolean(dynamicConfig.isNonModeledAttributes(), staticForbid.isNonModeledAttributes()),
                 mergeBoolean(dynamicConfig.isNonModeledInboxMessages(), staticForbid.isNonModeledInboxMessages()),
                 mergeBoolean(dynamicConfig.isNonModeledOutboxMessages(), staticForbid.isNonModeledOutboxMessages())
         );

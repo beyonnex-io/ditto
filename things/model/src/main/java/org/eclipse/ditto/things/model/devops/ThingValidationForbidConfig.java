@@ -31,11 +31,11 @@ public interface ThingValidationForbidConfig extends Jsonifiable<JsonObject> {
     Optional<Boolean> isThingDescriptionDeletion();
 
     /**
-     * Returns whether non-modeled properties are forbidden.
+     * Returns whether non-modeled attributes are forbidden.
      *
-     * @return an optional containing whether non-modeled properties are forbidden
+     * @return an optional containing whether non-modeled attributes are forbidden
      */
-    Optional<Boolean> isNonModeledProperties();
+    Optional<Boolean> isNonModeledAttributes();
 
 
     /**

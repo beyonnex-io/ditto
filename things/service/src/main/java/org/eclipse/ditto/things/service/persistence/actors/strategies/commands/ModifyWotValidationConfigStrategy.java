@@ -14,6 +14,7 @@ package org.eclipse.ditto.things.service.persistence.actors.strategies.commands;
 
 import org.eclipse.ditto.base.model.entity.metadata.Metadata;
 import org.eclipse.ditto.base.model.headers.DittoHeaders;
+import org.eclipse.ditto.base.model.headers.WithDittoHeaders;
 import org.eclipse.ditto.base.model.headers.entitytag.EntityTag;
 import org.eclipse.ditto.internal.utils.persistentactors.results.Result;
 import org.eclipse.ditto.internal.utils.persistentactors.results.ResultFactory;
@@ -31,6 +32,8 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Nullable;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 
 /**
  * Strategy for handling {@link ModifyWotValidationConfig} commands.
@@ -64,12 +67,13 @@ final class ModifyWotValidationConfigStrategy extends AbstractWotValidationConfi
 
     @Override
     protected Result<WotValidationConfigEvent<?>> doApply(final Context<WotValidationConfigId> context,
-                                                          @Nullable final ImmutableWotValidationConfig entity,
-                                                          final long nextRevision,
-                                                          final ModifyWotValidationConfig command,
-                                                          @Nullable final Metadata metadata) {
-        final Instant now = Instant.now();
+            @Nullable final ImmutableWotValidationConfig entity,
+            final long nextRevision,
+            final ModifyWotValidationConfig command,
+            @Nullable final Metadata metadata) {
         final ImmutableWotValidationConfig inputConfig = command.getValidationConfig();
+
+        final Instant now = Instant.now();
         final ImmutableWotValidationConfig configWithRevision = ImmutableWotValidationConfig.of(
                 inputConfig.getConfigId(),
                 inputConfig.isEnabled().orElse(null),
@@ -84,57 +88,44 @@ final class ModifyWotValidationConfigStrategy extends AbstractWotValidationConfi
                 metadata
         );
 
-        ddata.add(configWithRevision).thenRun(() -> {
-            LOGGER.info("Successfully updated DData with merged config");
-        });
+        final WotValidationConfigEvent<?> event = WotValidationConfigModified.of(
+                command.getEntityId(),
+                configWithRevision,
+                nextRevision,
+                now,
+                command.getDittoHeaders(),
+                metadata
+        );
 
-        final WotValidationConfigEvent<?> event;
-        final boolean becameCreated;
-        if (entity == null) {
-            event = WotValidationConfigCreated.of(
-                    command.getEntityId(),
-                    configWithRevision,
-                    nextRevision,
-                    now,
-                    command.getDittoHeaders(),
-                    metadata
-            );
-            becameCreated = true;
-        } else {
-            event = WotValidationConfigModified.of(
-                    command.getEntityId(),
-                    configWithRevision,
-                    nextRevision,
-                    now,
-                    command.getDittoHeaders(),
-                    metadata
-            );
-            becameCreated = false;
-        }
-        final boolean isNewConfig = entity == null;
+        // Update DData asynchronously but don't wait for it
+        ddata.add(configWithRevision)
+                .thenRun(() -> LOGGER.info("Successfully updated DData with merged config for <{}>", command.getEntityId()))
+                .exceptionally(error -> {
+                    LOGGER.error("Failed to update DData for <{}>: {}", command.getEntityId(), error.getMessage());
+                    return null;
+                });
 
-        if (isNewConfig) {
-            final ModifyWotValidationConfigResponse response = ModifyWotValidationConfigResponse.created(
-                    command.getEntityId(),
-                    configWithRevision.toJson(),
-                    createCommandResponseDittoHeaders(command.getDittoHeaders(), nextRevision)
-            );
-            return ResultFactory.newMutationResult(command, event, response, true, false);
-        } else {
-            final ModifyWotValidationConfigResponse response = ModifyWotValidationConfigResponse.modified(
-                    command.getEntityId(),
-                    configWithRevision,
-                    createCommandResponseDittoHeaders(command.getDittoHeaders(), nextRevision));
-            return ResultFactory.newMutationResult(command, event, response, false, false);
-        }
+        // Create response immediately
+        final ModifyWotValidationConfigResponse response = ModifyWotValidationConfigResponse.modified(
+                command.getEntityId(),
+                createCommandResponseDittoHeaders(command.getDittoHeaders(), nextRevision));
+
+        // Add ETag if available
+        final WithDittoHeaders responseWithEtag = EntityTag.fromEntity(configWithRevision)
+                .map(etag -> response.setDittoHeaders(
+                        response.getDittoHeaders().toBuilder()
+                                .eTag(etag)
+                                .build()))
+                .orElse(response);
+
+
+
+        // Return result with immediate response and event
+        return ResultFactory.newMutationResult(command, event, responseWithEtag, false, false);
     }
 
     @Override
-    public boolean isDefined(final Context<WotValidationConfigId> context, @Nullable final ImmutableWotValidationConfig entity,
-            final ModifyWotValidationConfig command) {
-        if (entity == null) {
-            return true;
-        }
-        return super.isDefined(context, entity, command);
+    public boolean isDefined(final Context<WotValidationConfigId> context, @Nullable final ImmutableWotValidationConfig entity, final ModifyWotValidationConfig command) {
+        return true;
     }
 }

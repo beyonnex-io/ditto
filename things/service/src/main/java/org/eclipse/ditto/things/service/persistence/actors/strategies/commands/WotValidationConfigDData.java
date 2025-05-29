@@ -86,8 +86,8 @@ public final class WotValidationConfigDData extends DistributedData<ORSet<Immuta
      */
     public CompletionStage<Void> add(final ImmutableWotValidationConfig config) {
         // Create a new ORSet with just this config and atomically replace the entire set
-        final ORSet<ImmutableWotValidationConfig> newSet = 
-            ORSet.<ImmutableWotValidationConfig>empty().add(selfUniqueAddress, config);
+        final ORSet<ImmutableWotValidationConfig> newSet =
+                ORSet.<ImmutableWotValidationConfig>empty().add(selfUniqueAddress, config);
         return update(getKey(0), writeAll(), orSet -> newSet);
     }
 
@@ -96,11 +96,19 @@ public final class WotValidationConfigDData extends DistributedData<ORSet<Immuta
      *
      * @return future that completes after the removal propagates to all replicas.
      */
+
     public CompletionStage<Void> clear() {
-        return update(getKey(0), writeAll(), orSet -> ORSet.empty());
+        return getConfigs().thenCompose(configSet -> {
+            ORSet<ImmutableWotValidationConfig> temp = configSet;
+            for (ImmutableWotValidationConfig config : configSet.getElements()) {
+                temp = temp.remove(selfUniqueAddress, config);
+            }
+            final ORSet<ImmutableWotValidationConfig> cleared = temp;
+
+            return update(getKey(0), writeAll(), orSet -> cleared)
+                    .thenRun(() -> { org.slf4j.LoggerFactory.getLogger(WotValidationConfigDData.class).info("DData cleared atomically (ORSet replaced with empty set) for WoT validation configs."); });
+        });
     }
-
-
     /**
      * Get the current validation configs from the local replica.
      *

@@ -148,26 +148,24 @@ public final class DevOpsRoute extends AbstractRoute {
      */
     private Route wotRoutes(final RequestContext ctx, final DittoHeaders dittoHeaders) {
         return rawPathPrefix(PathMatchers.slash().concat(PATH_WOT_CONFIG), () -> concat(
-            // /devops/wot/config/global
-            pathPrefix(PATH_WOT_GLOBAL, () -> concat(
-                pathEndOrSingleSlash(() -> concat(
-                    get(() -> handlePerRequest(ctx, RetrieveWotValidationConfig.of(WotValidationConfigId.GLOBAL, dittoHeaders))),
-                    put(() -> extractDataBytes(payloadSource ->
-                        handlePerRequest(ctx, dittoHeaders, payloadSource,
-                            json -> {
-                                final JsonObject validationConfigJson = JsonFactory.readFrom(json).asObject();
-                                final ImmutableWotValidationConfig validationConfig = ImmutableWotValidationConfig.fromJson(validationConfigJson);
-                                return ModifyWotValidationConfig.of(WotValidationConfigId.GLOBAL, validationConfig, dittoHeaders);
-                            }
-                        )
-                    )),
-                    delete(() -> handlePerRequest(ctx, DeleteWotValidationConfig.of(WotValidationConfigId.GLOBAL, dittoHeaders)))
+            // /devops/wot/config
+            pathEndOrSingleSlash(() -> concat(
+                get(() -> handlePerRequest(ctx, RetrieveWotValidationConfig.of(WotValidationConfigId.GLOBAL, dittoHeaders))),
+                put(() -> extractDataBytes(payloadSource ->
+                    handlePerRequest(ctx, dittoHeaders, payloadSource,
+                        json -> {
+                            final JsonObject validationConfigJson = JsonFactory.readFrom(json).asObject();
+                            final ImmutableWotValidationConfig validationConfig = ImmutableWotValidationConfig.fromJson(validationConfigJson);
+                            return ModifyWotValidationConfig.of(WotValidationConfigId.GLOBAL, validationConfig, dittoHeaders);
+                        }
+                    )
                 )),
-                // /devops/wot/config/global/merged
-                path(PATH_WOT_MERGED, () ->
-                    get(() -> handlePerRequest(ctx, RetrieveMergedWotValidationConfig.of(WotValidationConfigId.GLOBAL, dittoHeaders)))
-                )
+                delete(() -> handlePerRequest(ctx, DeleteWotValidationConfig.of(WotValidationConfigId.GLOBAL, dittoHeaders)))
             )),
+            // /devops/wot/config/merged
+            path(PATH_WOT_MERGED, () ->
+                get(() -> handlePerRequest(ctx, RetrieveMergedWotValidationConfig.of(WotValidationConfigId.GLOBAL, dittoHeaders)))
+            ),
             // /devops/wot/config/dynamicConfigs/{scopeId}
             pathPrefix(PATH_WOT_DYNAMIC_CONFIGS, () -> concat(
                 // /devops/wot/config/dynamicConfigs/{scopeId}
@@ -183,7 +181,7 @@ public final class DevOpsRoute extends AbstractRoute {
                         put(() -> extractDataBytes(payloadSource ->
                             handlePerRequest(ctx, dittoHeaders, payloadSource, json -> {
                                 final JsonObject configJson = JsonFactory.readFrom(json).asObject();
-                                
+
                                 if (!configJson.getValue("scopeId").isPresent()) {
                                     throw WotValidationConfigInvalidException.newBuilder("Missing required field 'scopeId' in payload")
                                             .dittoHeaders(dittoHeaders)

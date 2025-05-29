@@ -46,7 +46,7 @@ public final class DeleteWotValidationConfigResponse extends AbstractWotValidati
     /**
      * Name of the response.
      */
-    public static final String NAME = "delete";
+    public static final String NAME = "deleteWotValidationConfigResponse";
 
     /**
      * Type of this response.
@@ -135,22 +135,5 @@ public final class DeleteWotValidationConfigResponse extends AbstractWotValidati
         return getClass().getSimpleName() + " [" +
                 super.toString() +
                 "]";
-    }
-
-    /**
-     * This class contains definitions for all specific fields of this command response's JSON representation.
-     */
-    @Immutable
-    static final class JsonFields {
-
-        /**
-         * JSON field containing the resource path.
-         */
-        static final JsonFieldDefinition<String> RESOURCE_PATH =
-                JsonFactory.newStringFieldDefinition("resourcePath", JsonSchemaVersion.V_2);
-
-        private JsonFields() {
-            throw new AssertionError();
-        }
     }
 } 

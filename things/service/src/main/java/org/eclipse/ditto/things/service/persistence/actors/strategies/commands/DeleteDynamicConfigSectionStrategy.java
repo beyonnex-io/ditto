@@ -21,7 +21,7 @@ import org.eclipse.ditto.things.model.devops.ImmutableWotValidationConfig;
 import org.eclipse.ditto.things.model.devops.ImmutableDynamicValidationConfig;
 import org.eclipse.ditto.things.model.devops.WotValidationConfigId;
 import org.eclipse.ditto.things.model.devops.commands.DeleteDynamicConfigSection;
-import org.eclipse.ditto.things.model.devops.commands.ModifyWotValidationConfigResponse;
+import org.eclipse.ditto.things.model.devops.commands.DeleteWotValidationConfigResponse;
 import org.eclipse.ditto.things.model.devops.events.WotValidationConfigEvent;
 import org.eclipse.ditto.things.model.devops.events.WotValidationConfigModified;
 import org.eclipse.ditto.things.model.devops.WotValidationConfigRevision;
@@ -183,10 +183,8 @@ final class DeleteDynamicConfigSectionStrategy extends AbstractWotValidationConf
             );
         }
 
-        final ModifyWotValidationConfigResponse response = ModifyWotValidationConfigResponse.of(
-                command.getEntityId(),
-                configWithMetadata.toJson(),
-                createCommandResponseDittoHeaders(dittoHeaders, nextRevision));
+        final DeleteWotValidationConfigResponse response = DeleteWotValidationConfigResponse.of(command.getEntityId(),
+                dittoHeaders);
 
         LOGGER.info("Successfully deleted dynamic config section for scopeId={}", scopeId);
         return ResultFactory.newMutationResult(command, event, response);

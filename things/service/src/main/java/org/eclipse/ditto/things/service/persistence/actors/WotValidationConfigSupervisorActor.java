@@ -13,25 +13,24 @@
 package org.eclipse.ditto.things.service.persistence.actors;
 
 import org.apache.pekko.actor.*;
-import org.apache.pekko.japi.pf.FI;
 import org.apache.pekko.japi.pf.ReceiveBuilder;
 import org.eclipse.ditto.base.model.exceptions.DittoRuntimeExceptionBuilder;
+import org.eclipse.ditto.base.model.signals.Signal;
 import org.eclipse.ditto.base.model.signals.commands.streaming.SubscribeForPersistedEvents;
 import org.eclipse.ditto.base.model.signals.events.Event;
+import org.eclipse.ditto.base.service.signaltransformer.SignalTransformer;
+import org.eclipse.ditto.internal.utils.config.DefaultScopedConfig;
+import org.eclipse.ditto.internal.utils.config.ScopedConfig;
 import org.eclipse.ditto.things.model.devops.WotValidationConfigId;
 import org.eclipse.ditto.things.model.devops.commands.WotValidationConfigCommand;
 import org.eclipse.ditto.things.model.devops.exceptions.WotValidationConfigNotAccessibleException;
 import org.eclipse.ditto.things.model.signals.commands.ThingErrorResponse;
 import org.eclipse.ditto.internal.utils.persistence.mongo.streaming.MongoReadJournal;
-import org.eclipse.ditto.internal.utils.persistentactors.AbstractPersistenceSupervisor;
-import org.eclipse.ditto.internal.utils.namespaces.BlockedNamespaces;
+import org.eclipse.ditto.things.service.common.config.DittoThingsConfig;
 import org.eclipse.ditto.base.service.config.supervision.ExponentialBackOffConfig;
 import org.eclipse.ditto.base.service.config.supervision.LocalAskTimeoutConfig;
 import org.eclipse.ditto.base.service.actors.ShutdownBehaviour;
 import org.eclipse.ditto.internal.utils.cluster.StopShardedActor;
-import org.eclipse.ditto.internal.utils.config.DefaultScopedConfig;
-import org.eclipse.ditto.things.service.common.config.DittoThingsConfig;
-import org.eclipse.ditto.internal.utils.pekko.logging.DittoLoggerFactory;
 import org.apache.pekko.event.LoggingAdapter;
 import org.apache.pekko.event.Logging;
 
@@ -40,15 +39,8 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Objects;
+import java.util.concurrent.CompletionStage;
 
-/**
- * Supervisor for WotValidationConfigPersistenceActor in sharding.
- * <p>
- * If the child terminates, it will wait for the calculated exponential back-off time and restart it afterwards.
- * Between the termination of the child and the restart, this actor answers to all requests with a
- * {@link WotValidationConfigNotAccessibleException} as fail fast strategy.
- * </p>
- */
 public final class WotValidationConfigSupervisorActor extends AbstractActorWithTimers {
 
     private final ActorRef pubSubMediator;
@@ -57,6 +49,7 @@ public final class WotValidationConfigSupervisorActor extends AbstractActorWithT
     private final LoggingAdapter log = Logging.getLogger(getContext().getSystem(), this);
     private ActorRef persistenceActorChild;
     private long opCounter = 0;
+    private final SignalTransformer signalTransformer;
 
     @SuppressWarnings("unused")
     private WotValidationConfigSupervisorActor(final ActorRef pubSubMediator,
@@ -68,19 +61,13 @@ public final class WotValidationConfigSupervisorActor extends AbstractActorWithT
         final var scopedConfig = DefaultScopedConfig.dittoScoped(system.settings().config());
         final var thingsConfig = DittoThingsConfig.of(scopedConfig);
         shutdownTimeout = thingsConfig.getThingConfig().getShutdownTimeout();
+
+        // This is the only way that works for your transformer setup!
+        this.signalTransformer = org.eclipse.ditto.base.service.signaltransformer.SignalTransformers.get(
+                system, ScopedConfig.dittoExtension(system.settings().config())
+        );
     }
 
-    /**
-     * Props for creating a {@code WotValidationConfigSupervisorActor}.
-     * <p>
-     * Exceptions in the child are handled with a supervision strategy that stops the child
-     * for {@link ActorKilledException}'s and escalates all others.
-     * </p>
-     *
-     * @param pubSubMediator the pub/sub mediator ActorRef.
-     * @param mongoReadJournal the ReadJournal used for gaining access to historical values.
-     * @return the {@link Props} to create this actor.
-     */
     public static Props props(final ActorRef pubSubMediator,
             final MongoReadJournal mongoReadJournal) {
         return Props.create(WotValidationConfigSupervisorActor.class, pubSubMediator, mongoReadJournal);
@@ -99,7 +86,9 @@ public final class WotValidationConfigSupervisorActor extends AbstractActorWithT
 
     private void handleWotValidationConfigCommand(final WotValidationConfigCommand<?> command) {
         if (null != persistenceActorChild) {
-            persistenceActorChild.forward(command, getContext());
+            signalTransformer.apply(command).thenAccept(transformed ->
+                    persistenceActorChild.tell(transformed, getSender())
+            );
         } else {
             final WotValidationConfigNotAccessibleException exception = WotValidationConfigNotAccessibleException
                     .newBuilder(command.getEntityId())
@@ -221,4 +210,4 @@ public final class WotValidationConfigSupervisorActor extends AbstractActorWithT
         SHUTDOWN_TIMEOUT,
         RESTART_PERSISTENCE
     }
-} 
+}

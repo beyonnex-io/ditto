@@ -31,11 +31,11 @@ public interface ThingValidationEnforceConfig extends Jsonifiable<JsonObject> {
     Optional<Boolean> isThingDescriptionModification();
 
     /**
-     * Returns whether properties are enforced.
+     * Returns whether attributes modification is enforced.
      *
-     * @return an optional containing whether properties are enforced
+     * @return an optional containing whether attributes modification is enforced
      */
-    Optional<Boolean> isProperties();
+    Optional<Boolean> isAttributes();
 
     /**
      * Returns whether inbox messages input is enforced.

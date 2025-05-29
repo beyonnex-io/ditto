@@ -88,8 +88,8 @@ public final class WotValidationConfigCommandStrategies
         // Get the static config using wotConfig.getValidationConfig()
         final var staticConfig = wotConfig.getValidationConfig();
 
-        // Add strategies that extend AbstractWotValidationConfigCommandStrategy
         addStrategy(new ModifyWotValidationConfigStrategy(ddata));
+        addStrategy(new CreateWotValidationConfigStrategy(ddata));
         addStrategy(new DeleteWotValidationConfigStrategy(ddata));
         addStrategy(new RetrieveWotValidationConfigStrategy());
         addStrategy(new RetrieveMergedWotValidationConfigStrategy(staticConfig));
@@ -103,4 +103,4 @@ public final class WotValidationConfigCommandStrategies
     protected Result<WotValidationConfigEvent<?>> getEmptyResult() {
         return ResultFactory.emptyResult();
     }
-} 
+}
