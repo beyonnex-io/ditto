@@ -40,14 +40,8 @@ public final class ImmutableThingValidationEnforceConfig implements ThingValidat
 
     private static final JsonFieldDefinition<Boolean> THING_DESCRIPTION_MODIFICATION =
             JsonFactory.newBooleanFieldDefinition("thingDescriptionModification", FieldType.REGULAR, JsonSchemaVersion.V_2);
-    private static final JsonFieldDefinition<Boolean> PRESENCE_OF_MODELED_THINGS =
-            JsonFactory.newBooleanFieldDefinition("presenceOfModeledThings", FieldType.REGULAR, JsonSchemaVersion.V_2);
-    private static final JsonFieldDefinition<Boolean> PROPERTIES =
-            JsonFactory.newBooleanFieldDefinition("properties", FieldType.REGULAR, JsonSchemaVersion.V_2);
     private static final JsonFieldDefinition<Boolean> ATTRIBUTES =
             JsonFactory.newBooleanFieldDefinition("attributes", FieldType.REGULAR, JsonSchemaVersion.V_2);
-    private static final JsonFieldDefinition<Boolean> DESIRED_PROPERTIES =
-            JsonFactory.newBooleanFieldDefinition("desiredProperties", FieldType.REGULAR, JsonSchemaVersion.V_2);
     private static final JsonFieldDefinition<Boolean> INBOX_MESSAGES_INPUT =
             JsonFactory.newBooleanFieldDefinition("inboxMessagesInput", FieldType.REGULAR, JsonSchemaVersion.V_2);
     private static final JsonFieldDefinition<Boolean> INBOX_MESSAGES_OUTPUT =
@@ -105,7 +99,7 @@ public final class ImmutableThingValidationEnforceConfig implements ThingValidat
 
     @Override
     public Optional<Boolean> isAttributes() {
-        return Optional.empty();
+        return Optional.ofNullable(attributes);
     }
 
     @Override
@@ -127,6 +121,7 @@ public final class ImmutableThingValidationEnforceConfig implements ThingValidat
     public JsonObject toJson() {
         final JsonObjectBuilder builder = JsonFactory.newObjectBuilder();
         isThingDescriptionModification().ifPresent(value -> builder.set(THING_DESCRIPTION_MODIFICATION, value));
+        isAttributes().ifPresent(value -> builder.set(ATTRIBUTES, value));
         isInboxMessagesInput().ifPresent(value -> builder.set(INBOX_MESSAGES_INPUT, value));
         isInboxMessagesOutput().ifPresent(value -> builder.set(INBOX_MESSAGES_OUTPUT, value));
         isOutboxMessages().ifPresent(value -> builder.set(OUTBOX_MESSAGES, value));
@@ -153,9 +148,6 @@ public final class ImmutableThingValidationEnforceConfig implements ThingValidat
      */
     public static ImmutableThingValidationEnforceConfig fromJson(final JsonObject jsonObject) {
         final Boolean thingDescriptionModification = jsonObject.getValue(THING_DESCRIPTION_MODIFICATION)
-                .orElse(null);
-
-        final Boolean properties = jsonObject.getValue(PROPERTIES)
                 .orElse(null);
 
         final Boolean attributes = jsonObject.getValue(ATTRIBUTES)
@@ -190,6 +182,7 @@ public final class ImmutableThingValidationEnforceConfig implements ThingValidat
         }
         final ImmutableThingValidationEnforceConfig that = (ImmutableThingValidationEnforceConfig) o;
         return Objects.equals(thingDescriptionModification, that.thingDescriptionModification) &&
+                Objects.equals(attributes, that.attributes) &&
                 Objects.equals(inboxMessagesInput, that.inboxMessagesInput) &&
                 Objects.equals(inboxMessagesOutput, that.inboxMessagesOutput) &&
                 Objects.equals(outboxMessages, that.outboxMessages);
