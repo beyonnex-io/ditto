@@ -12,8 +12,12 @@
  */
 package org.eclipse.ditto.wot.api.config;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
@@ -21,19 +25,28 @@ import javax.annotation.concurrent.Immutable;
 import org.eclipse.ditto.internal.utils.config.ConfigWithFallback;
 import org.eclipse.ditto.internal.utils.config.DefaultScopedConfig;
 import org.eclipse.ditto.internal.utils.config.ScopedConfig;
+import org.eclipse.ditto.json.JsonFactory;
+import org.eclipse.ditto.json.JsonObject;
+import org.eclipse.ditto.json.JsonValue;
+import org.eclipse.ditto.things.model.devops.ImmutableDynamicValidationConfig;
 import org.eclipse.ditto.wot.validation.ValidationContext;
 import org.eclipse.ditto.wot.validation.config.FeatureValidationConfig;
 import org.eclipse.ditto.wot.validation.config.ThingValidationConfig;
 import org.eclipse.ditto.wot.validation.config.TmValidationConfig;
+import org.eclipse.ditto.things.model.devops.ImmutableValidationContext;
+import org.eclipse.ditto.things.model.devops.ImmutableConfigOverrides;
+import org.eclipse.ditto.things.model.devops.ImmutableThingValidationConfig;
+import org.eclipse.ditto.things.model.devops.ImmutableFeatureValidationConfig;
 
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import com.typesafe.config.ConfigRenderOptions;
 
 /**
  * This class is the default implementation of the WoT (Web of Things) {@link org.eclipse.ditto.wot.validation.config.TmValidationConfig}.
  */
 @Immutable
-final class DefaultTmValidationConfig implements TmValidationConfig {
+public final class DefaultTmValidationConfig implements TmValidationConfig {
 
     private static final String CONFIG_PATH = "tm-model-validation";
 
@@ -80,8 +93,10 @@ final class DefaultTmValidationConfig implements TmValidationConfig {
                         .stream()
                         .map(InternalDynamicTmValidationConfiguration::new)
                         .toList();
-        return new DefaultTmValidationConfig(ConfigWithFallback.newInstance(config, CONFIG_PATH,
-                ConfigValue.values()), dynamicTmValidationConfigurations, null);
+        return new DefaultTmValidationConfig(
+                ConfigWithFallback.newInstance(config, CONFIG_PATH, ConfigValue.values()),
+                dynamicTmValidationConfigurations,
+                null);
     }
 
     @Override
@@ -104,6 +119,13 @@ final class DefaultTmValidationConfig implements TmValidationConfig {
         return featureValidationConfig;
     }
 
+    /**
+     * Creates a new instance of this configuration with the specified validation context.
+     * If dynamic configurations are present, they will be evaluated against the provided context.
+     *
+     * @param context the validation context to use for dynamic configuration selection
+     * @return a new TmValidationConfig instance with context-specific settings applied
+     */
     @Override
     public TmValidationConfig withValidationContext(@Nullable final ValidationContext context) {
         if (dynamicTmValidationConfigurations.isEmpty()) {
@@ -146,5 +168,74 @@ final class DefaultTmValidationConfig implements TmValidationConfig {
                 ", featureValidationConfig=" + featureValidationConfig +
                 ", scopedConfig=" + scopedConfig +
                 "]";
+    }
+
+    @Override
+    public List<ImmutableDynamicValidationConfig> getDynamicConfig() {
+        if (dynamicTmValidationConfigurations.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return dynamicTmValidationConfigurations.stream()
+                .map(internal -> {
+                    var contextConfig = internal.getDynamicValidationContextConfiguration();
+
+                    var dittoHeadersPatterns = contextConfig.dittoHeadersPatterns().stream()
+                            .map(map -> map.entrySet().stream()
+                                    .collect(Collectors.toMap(
+                                            Map.Entry::getKey,
+                                            e -> e.getValue().pattern()
+                                    )))
+                            .toList();
+
+                    var thingDefinitionPatterns = contextConfig.thingDefinitionPatterns().stream()
+                            .map(Pattern::pattern)
+                            .toList();
+
+                    var featureDefinitionPatterns = contextConfig.featureDefinitionPatterns().stream()
+                            .map(Pattern::pattern)
+                            .toList();
+
+                    var validationContext = ImmutableValidationContext.of(
+                            dittoHeadersPatterns,
+                            thingDefinitionPatterns,
+                            featureDefinitionPatterns,
+                            internal.getScopeId()
+                    );
+
+                    var configOverridesJson = JsonObject.of(internal.configOverrides().root().render(
+                            ConfigRenderOptions.defaults().setComments(false).setOriginComments(false)
+                    ));
+
+                    Boolean enabled =  configOverridesJson.getValue("enabled").map(JsonValue::asBoolean).orElse(null);
+                    Boolean logWarning = configOverridesJson.getValue("logWarningInsteadOfFailingApiCalls")
+                            .map(JsonValue::asBoolean).orElse(null);
+
+                    ImmutableThingValidationConfig thingConfig = configOverridesJson.getValue("thing")
+                            .filter(JsonValue::isObject)
+                            .map(JsonValue::asObject)
+                            .map(ImmutableThingValidationConfig::fromJson)
+                            .orElse(null);
+
+                    ImmutableFeatureValidationConfig featureConfig = configOverridesJson.getValue("feature")
+                            .filter(JsonValue::isObject)
+                            .map(JsonValue::asObject)
+                            .map(ImmutableFeatureValidationConfig::fromJson)
+                            .orElse(null);
+
+                    var configOverrides = ImmutableConfigOverrides.of(
+                            enabled,
+                            logWarning,
+                            thingConfig,
+                            featureConfig
+                    );
+
+                    return ImmutableDynamicValidationConfig.of(
+                            internal.getScopeId(),
+                            validationContext,
+                            configOverrides
+                    );
+                })
+                .toList();
     }
 }

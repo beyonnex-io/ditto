@@ -45,6 +45,13 @@ import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonPointer;
 import org.eclipse.ditto.json.JsonValue;
+import org.eclipse.ditto.things.model.devops.ImmutableWotValidationConfig;
+import org.eclipse.ditto.things.model.devops.WotValidationConfigId;
+import org.eclipse.ditto.things.model.devops.commands.DeleteWotValidationConfig;
+import org.eclipse.ditto.things.model.devops.commands.ModifyWotValidationConfig;
+import org.eclipse.ditto.things.model.devops.commands.RetrieveMergedWotValidationConfig;
+import org.eclipse.ditto.things.model.devops.commands.RetrieveWotValidationConfig;
+import org.eclipse.ditto.things.model.devops.exceptions.WotValidationConfigInvalidException;
 
 /**
  * Builder for creating Pekko HTTP routes for {@code /devops}.
@@ -65,6 +72,12 @@ public final class DevOpsRoute extends AbstractRoute {
     private static final String PATH_LOGGING = "logging";
     private static final String PATH_PIGGYBACK = "piggyback";
     private static final String PATH_CONFIG = "config";
+    private static final String PATH_WOT = "wot";
+
+    // WoT validation config paths
+    private static final String PATH_WOT_CONFIG = "config";
+    private static final String PATH_WOT_MERGED = "merged";
+    private static final String PATH_WOT_DYNAMIC_CONFIGS = "dynamicConfigs";
 
     /**
      * Path parameter for retrieving config.
@@ -118,10 +131,98 @@ public final class DevOpsRoute extends AbstractRoute {
                                 ),
                                 rawPathPrefix(PathMatchers.slash().concat(PATH_CONFIG),
                                         () -> // /devops/config
-                                                config(ctx, createHeaders(queryParameters)))
+                                                config(ctx, createHeaders(queryParameters))
+                                ),
+                                rawPathPrefix(PathMatchers.slash().concat(PATH_WOT),
+                                        () -> // /devops/wot
+                                                wotRoutes(ctx, createHeaders(queryParameters))
+                                )
                         )
                 )
         );
+    }
+
+    /**
+     * @return {@code /devops/wot/config} route.
+     */
+    private Route wotRoutes(final RequestContext ctx, final DittoHeaders dittoHeaders) {
+        return rawPathPrefix(PathMatchers.slash().concat(PATH_WOT_CONFIG), () -> concat(
+            // /devops/wot/config
+            pathEndOrSingleSlash(() -> concat(
+                get(() -> handlePerRequest(ctx, RetrieveWotValidationConfig.of(WotValidationConfigId.GLOBAL, dittoHeaders))),
+                put(() -> extractDataBytes(payloadSource ->
+                    handlePerRequest(ctx, dittoHeaders, payloadSource,
+                        json -> {
+                            final JsonObject validationConfigJson = JsonFactory.readFrom(json).asObject();
+                            final ImmutableWotValidationConfig validationConfig = ImmutableWotValidationConfig.fromJson(validationConfigJson);
+                            return ModifyWotValidationConfig.of(WotValidationConfigId.GLOBAL, validationConfig, dittoHeaders);
+                        }
+                    )
+                )),
+                delete(() -> handlePerRequest(ctx, DeleteWotValidationConfig.of(WotValidationConfigId.GLOBAL, dittoHeaders)))
+            )),
+            // /devops/wot/config/merged
+            path(PATH_WOT_MERGED, () ->
+                get(() -> handlePerRequest(ctx, RetrieveMergedWotValidationConfig.of(WotValidationConfigId.GLOBAL, dittoHeaders)))
+            ),
+            // /devops/wot/config/dynamicConfigs/{scopeId}
+            pathPrefix(PATH_WOT_DYNAMIC_CONFIGS, () -> concat(
+                // /devops/wot/config/dynamicConfigs/{scopeId}
+                pathPrefix(PathMatchers.segment(), scopeId ->
+                    pathEndOrSingleSlash(() -> concat(
+                        get(() -> handlePerRequest(ctx,
+                            org.eclipse.ditto.things.model.devops.commands.RetrieveDynamicConfigSection.of(
+                                org.eclipse.ditto.things.model.devops.WotValidationConfigId.GLOBAL,
+                                scopeId,
+                                dittoHeaders
+                            )
+                        )),
+                        put(() -> extractDataBytes(payloadSource ->
+                            handlePerRequest(ctx, dittoHeaders, payloadSource, json -> {
+                                final JsonObject configJson = JsonFactory.readFrom(json).asObject();
+
+                                if (!configJson.getValue("scopeId").isPresent()) {
+                                    throw WotValidationConfigInvalidException.newBuilder("Missing required field 'scopeId' in payload")
+                                            .dittoHeaders(dittoHeaders)
+                                            .build();
+                                }
+
+                                final String payloadScopeId = configJson.getValue("scopeId")
+                                    .map(JsonValue::asString)
+                                    .orElseThrow(() -> WotValidationConfigInvalidException.newBuilder("Invalid 'scopeId' in payload")
+                                            .dittoHeaders(dittoHeaders)
+                                            .build());
+
+                                final org.eclipse.ditto.things.model.devops.ImmutableDynamicValidationConfig section =
+                                    org.eclipse.ditto.things.model.devops.ImmutableDynamicValidationConfig.fromJson(configJson);
+                                return org.eclipse.ditto.things.model.devops.commands.ModifyDynamicConfigSection.of(
+                                    org.eclipse.ditto.things.model.devops.WotValidationConfigId.GLOBAL,
+                                    payloadScopeId,
+                                    section,
+                                    dittoHeaders
+                                );
+                            })
+                        )),
+                        delete(() -> handlePerRequest(ctx,
+                            org.eclipse.ditto.things.model.devops.commands.DeleteDynamicConfigSection.of(
+                                org.eclipse.ditto.things.model.devops.WotValidationConfigId.GLOBAL,
+                                scopeId,
+                                dittoHeaders
+                            )
+                        ))
+                    ))
+                ),
+                // /devops/wot/config/dynamicConfigs (GET all dynamic configs)
+                pathEndOrSingleSlash(() ->
+                    get(() -> handlePerRequest(ctx,
+                        org.eclipse.ditto.things.model.devops.commands.RetrieveAllDynamicConfigSections.of(
+                            org.eclipse.ditto.things.model.devops.WotValidationConfigId.GLOBAL,
+                            dittoHeaders
+                        )
+                    ))
+                )
+            ))
+        ));
     }
 
     /*
@@ -291,11 +392,11 @@ public final class DevOpsRoute extends AbstractRoute {
     }
 
     private DittoHeaders createHeaders(final Map<String, String> queryParameters) {
-        final QueryParametersToHeadersMap queryParamsToHeaders = QueryParametersToHeadersMap.getInstance(httpConfig);
+        final QueryParametersToHeadersMap queryParamsToHeadersMap = QueryParametersToHeadersMap.getInstance(httpConfig);
 
         return DittoHeaders.newBuilder()
                 .randomCorrelationId()
-                .putHeaders(queryParamsToHeaders.apply(queryParameters))
+                .putHeaders(queryParamsToHeadersMap.apply(queryParameters))
                 .build();
     }
 
@@ -305,5 +406,4 @@ public final class DevOpsRoute extends AbstractRoute {
         Route build(RequestContext ctx, String serviceName, String instance, DittoHeaders dittoHeaders);
 
     }
-
 }

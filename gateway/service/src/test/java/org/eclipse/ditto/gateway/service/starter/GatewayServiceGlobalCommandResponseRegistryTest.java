@@ -41,6 +41,8 @@ import org.eclipse.ditto.things.model.signals.commands.query.RetrieveFeatureResp
 import org.eclipse.ditto.thingsearch.api.commands.sudo.SudoRetrieveNamespaceReportResponse;
 import org.eclipse.ditto.thingsearch.model.signals.commands.SearchErrorResponse;
 import org.eclipse.ditto.thingsearch.model.signals.commands.query.QueryThingsResponse;
+import org.eclipse.ditto.things.model.devops.commands.RetrieveMergedWotValidationConfigResponse;
+import org.eclipse.ditto.things.model.devops.commands.RetrieveWotValidationConfigResponse;
 
 public final class GatewayServiceGlobalCommandResponseRegistryTest extends GlobalCommandResponseRegistryTestCases {
 
@@ -73,7 +75,9 @@ public final class GatewayServiceGlobalCommandResponseRegistryTest extends Globa
                 CheckPermissionsResponse.class,
                 Acknowledgement.class,
                 ModifySplitBrainResolverResponse.class,
-                CleanupPersistenceResponse.class
+                CleanupPersistenceResponse.class,
+                RetrieveMergedWotValidationConfigResponse.class,
+                RetrieveWotValidationConfigResponse.class
         );
         excludeKnownNotAnnotatedClass("org.eclipse.ditto.gateway.service.endpoints.EndpointTestBase$DummyThingModifyCommandResponse");
     }

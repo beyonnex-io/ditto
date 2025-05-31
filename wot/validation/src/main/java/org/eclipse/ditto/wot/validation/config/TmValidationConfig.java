@@ -17,6 +17,9 @@ import javax.annotation.concurrent.Immutable;
 
 import org.eclipse.ditto.internal.utils.config.KnownConfigValue;
 import org.eclipse.ditto.wot.validation.ValidationContext;
+import org.eclipse.ditto.things.model.devops.ImmutableDynamicValidationConfig;
+
+import java.util.List;
 
 /**
  * Provides configuration settings for WoT (Web of Things) integration regarding the validation of Things and Features
@@ -55,6 +58,12 @@ public interface TmValidationConfig {
      * @return an API call specific instance of the validation config.
      */
     TmValidationConfig withValidationContext(@Nullable ValidationContext context);
+
+    /**
+     * @return the list of dynamic validation configurations.
+     */
+    List<ImmutableDynamicValidationConfig> getDynamicConfig();
+
 
     /**
      * An enumeration of the known config path expressions and their associated default values for
