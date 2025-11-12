@@ -281,26 +281,23 @@ public final class OutboundMappingProcessor extends AbstractMappingProcessor<Out
                                 ));
                     }
                     
-                    return targets.stream()
-                            .flatMap(target -> {
-                                final AuthorizationContext targetAuthContext = target.getAuthorizationContext();
-                                final TopicPath.Channel channel = ProtocolAdapter.determineChannel(source);
-                                
-                                final Adaptable adaptableForTarget = mappingTimer.protocol(() ->
-                                        hasPartialAccessPaths
-                                                ? protocolAdapter.toAdaptable(source, channel, targetAuthContext)
-                                                : protocolAdapter.toAdaptable(source, channel, null));
-                                
-                                final Adaptable adaptableWithExtra = outboundSignal.getExtra()
-                                        .map(extra -> ProtocolFactory.setExtra(adaptableForTarget, extra))
-                                        .orElse(adaptableForTarget);
-                                
-                                final Adaptable adaptableWithCorrelationId = setInternalCorrelationIdToAdaptable(
-                                        adaptableWithExtra, source);
-                                
-                                final Adaptable filteredAdaptable;
-                                if (hasPartialAccessPaths) {
-                                    filteredAdaptable = AdaptablePartialAccessFilter
+                    if (hasPartialAccessPaths) {
+                        return targets.stream()
+                                .flatMap(target -> {
+                                    final AuthorizationContext targetAuthContext = target.getAuthorizationContext();
+                                    final TopicPath.Channel channel = ProtocolAdapter.determineChannel(source);
+                                    
+                                    final Adaptable adaptableForTarget = mappingTimer.protocol(() ->
+                                            protocolAdapter.toAdaptable(source, channel, targetAuthContext));
+                                    
+                                    final Adaptable adaptableWithExtra = outboundSignal.getExtra()
+                                            .map(extra -> ProtocolFactory.setExtra(adaptableForTarget, extra))
+                                            .orElse(adaptableForTarget);
+                                    
+                                    final Adaptable adaptableWithCorrelationId = setInternalCorrelationIdToAdaptable(
+                                            adaptableWithExtra, source);
+                                    
+                                    final Adaptable filteredAdaptable = AdaptablePartialAccessFilter
                                             .filterAdaptableForPartialAccess(adaptableWithCorrelationId, targetAuthContext);
                                     
                                     final TopicPath topicPath = filteredAdaptable.getTopicPath();
@@ -319,21 +316,35 @@ public final class OutboundMappingProcessor extends AbstractMappingProcessor<Out
                                             return Stream.empty();
                                         }
                                     }
-                                } else {
-                                    filteredAdaptable = adaptableWithCorrelationId;
-                                }
-                                
-                                final OutboundSignal.Mappable targetMappableSignal =
-                                        OutboundSignalFactory.newMappableOutboundSignal(source,
-                                                List.of(target), mappableSignal.getPayloadMapping());
-                                return mappers.stream()
-                                        .flatMap(mapper -> runMapper(
-                                                targetMappableSignal,
-                                                filteredAdaptable,
-                                                mapper,
-                                                mappingTimer
-                                        ));
-                            });
+                                    
+                                    final OutboundSignal.Mappable targetMappableSignal =
+                                            OutboundSignalFactory.newMappableOutboundSignal(source,
+                                                    List.of(target), mappableSignal.getPayloadMapping());
+                                    return mappers.stream()
+                                            .flatMap(mapper -> runMapper(
+                                                    targetMappableSignal,
+                                                    filteredAdaptable,
+                                                    mapper,
+                                                    mappingTimer
+                                            ));
+                                });
+                    } else {
+                        final TopicPath.Channel channel = ProtocolAdapter.determineChannel(source);
+                        final Adaptable adaptableForTarget = mappingTimer.protocol(() ->
+                                protocolAdapter.toAdaptable(source, channel, null));
+                        final Adaptable adaptableWithExtra = outboundSignal.getExtra()
+                                .map(extra -> ProtocolFactory.setExtra(adaptableForTarget, extra))
+                                .orElse(adaptableForTarget);
+                        final Adaptable adaptableWithCorrelationId = setInternalCorrelationIdToAdaptable(
+                                adaptableWithExtra, source);
+                        return mappers.stream()
+                                .flatMap(mapper -> runMapper(
+                                        mappableSignal,
+                                        adaptableWithCorrelationId,
+                                        mapper,
+                                        mappingTimer
+                                ));
+                    }
                 })
                 .toList());
     }
@@ -345,47 +356,6 @@ public final class OutboundMappingProcessor extends AbstractMappingProcessor<Out
         result = optionalCorrelationId.map(s -> adaptable.setDittoHeaders(
                 adaptable.getDittoHeaders().toBuilder().correlationId(s).build())).orElse(adaptable);
         return result;
-    }
-
-    private Adaptable removeTargetIssuedAcknowledgements(final Adaptable adaptable, final Target target, final Signal<?> source) {
-        final DittoHeaders headers = adaptable.getDittoHeaders();
-        final Set<AcknowledgementRequest> acknowledgementRequests = headers.getAcknowledgementRequests();
-        
-        if (acknowledgementRequests.isEmpty()) {
-            return adaptable;
-        }
-
-        final boolean isLiveMessage = ProtocolAdapter.isLiveSignal(source);
-        final Optional<AcknowledgementLabel> targetIssuedAckLabel = target.getIssuedAcknowledgementLabel();
-
-        final Set<AcknowledgementRequest> filteredRequests = acknowledgementRequests.stream()
-                .filter(request -> {
-                    final AcknowledgementLabel label = request.getLabel();
-                    
-                    if (isLiveMessage) {
-                        return true;
-                    }
-                    
-                    if (targetIssuedAckLabel.isPresent() && label.equals(targetIssuedAckLabel.get())) {
-                        return false;
-                    }
-                    
-                    // For events: remove non-source-declared acks
-                    return isSourceDeclaredAck(label);
-                })
-                .collect(Collectors.toSet());
-
-        if (filteredRequests.size() == acknowledgementRequests.size()) {
-            // No change needed
-            return adaptable;
-        }
-
-        final DittoHeaders filteredHeaders = headers.toBuilder()
-                .acknowledgementRequests(filteredRequests)
-                .build();
-        return ProtocolFactory.newAdaptableBuilder(adaptable)
-                .withHeaders(filteredHeaders)
-                .build();
     }
 
     private Stream<MappingOutcome<OutboundSignal.Mapped>> runMapper(final OutboundSignal.Mappable outboundSignal,

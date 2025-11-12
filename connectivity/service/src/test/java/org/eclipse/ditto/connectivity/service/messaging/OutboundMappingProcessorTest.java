@@ -188,14 +188,14 @@ public final class OutboundMappingProcessorTest {
     @Test
     public void testGroupingOfTargets() {
         /*
-          Note: Targets are grouped by payload mapping, but each target is still processed individually
-          for partial access filtering. So we get:
-           - 3 targets with 1 mapper: 3 targets × 1 mapper = 3 mappings
-           - 2 targets with 2 mappers: 2 targets × 2 mappers = 4 mappings
-           - 1 target with 3 mappers: 1 target × 3 mappers = 3 mappings
-          Total: 3 + 4 + 3 = 10 mappings
+          Note: Targets are grouped by payload mapping. When there's no partial access filtering,
+          one adaptable is created for all targets in a group. So we get:
+           - 3 targets with 1 mapper (grouped together, mapping is done once)  -> 1 message (with 3 targets)
+           - 2 targets with 2 mappers (grouped together, mapping is done twice) -> 2 messages (with 2 targets)
+           - 1 target with 3 mappers (no grouping, mapping is done three times)       -> 3 messages (with 1 target)
+          Total: 1 + 2 + 3 = 6 mappings
          */
-        testOutbound(10, 0, 0,
+        testOutbound(6, 0, 0,
                 targetWithMapping(DITTO_MAPPER),
                 targetWithMapping(DITTO_MAPPER),
                 targetWithMapping(DITTO_MAPPER),
@@ -443,7 +443,7 @@ public final class OutboundMappingProcessorTest {
             final OutboundSignal.Mapped mapped = captor.getValue();
             final JsonifiableAdaptable adaptable = ProtocolFactory.jsonifiableAdaptableFromJson(
                     JsonFactory.newObject(mapped.getExternalMessage().getTextPayload().orElseThrow()));
-            
+
             assertThat(adaptable.getTopicPath().getAction()).contains(TopicPath.Action.MODIFIED);
             assertThat(adaptable.getPayload().getValue()).isPresent();
         }};
@@ -480,7 +480,7 @@ public final class OutboundMappingProcessorTest {
             final OutboundSignal.Mapped mapped = captor.getValue();
             final JsonifiableAdaptable adaptable = ProtocolFactory.jsonifiableAdaptableFromJson(
                     JsonFactory.newObject(mapped.getExternalMessage().getTextPayload().orElseThrow()));
-            
+
             assertThat(adaptable.getTopicPath().getAction()).contains(TopicPath.Action.MODIFIED);
             assertThat(adaptable.getPayload().getValue()).isPresent();
         }};
@@ -517,7 +517,7 @@ public final class OutboundMappingProcessorTest {
             final OutboundSignal.Mapped mapped = captor.getValue();
             final JsonifiableAdaptable adaptable = ProtocolFactory.jsonifiableAdaptableFromJson(
                     JsonFactory.newObject(mapped.getExternalMessage().getTextPayload().orElseThrow()));
-            
+
             assertThat(adaptable.getTopicPath().getAction()).contains(TopicPath.Action.MODIFIED);
             assertThat(adaptable.getPayload().getValue()).isPresent();
         }};
