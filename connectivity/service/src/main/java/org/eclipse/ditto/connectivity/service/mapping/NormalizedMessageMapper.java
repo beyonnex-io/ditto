@@ -157,7 +157,7 @@ public final class NormalizedMessageMapper extends AbstractMessageMapper {
 
         payload.getTimestamp().ifPresent(timestamp -> builder.set(MODIFIED, timestamp.toString()));
         payload.getRevision().ifPresent(revision -> builder.set(REVISION, revision));
-        
+
         // Add _deleted field only for complete thing deletions (ThingDeleted events)
         // Partial deletions (AttributeDeleted, FeatureDeleted, etc.) are not mapped
         if (isThingDeleted(topicPath, payload)) {
@@ -165,7 +165,7 @@ public final class NormalizedMessageMapper extends AbstractMessageMapper {
                     builder.set(DELETED, timestamp.toString())
             );
         }
-        
+
         builder.set(ABRIDGED_ORIGINAL_MESSAGE, abridgeMessage(adaptable));
 
         final var json = builder.build();
