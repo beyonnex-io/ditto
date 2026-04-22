@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
-import org.eclipse.ditto.base.model.exceptions.DittoJsonException;
+
 import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
 import org.eclipse.ditto.json.JsonArray;
 import org.eclipse.ditto.json.JsonFactory;
@@ -64,11 +64,13 @@ public final class ImmutablePolicyEntryTest {
         ImmutablePolicyEntry.fromJson(null, JsonFactory.newObjectBuilder().build());
     }
 
-    @Test(expected = DittoJsonException.class)
+    @Test
     public void testFromJsonEmptyWithLabel() {
         final JsonObject jsonObject = JsonFactory.newObjectBuilder().build();
 
-        ImmutablePolicyEntry.fromJson(LABEL_END_USER, jsonObject);
+        final PolicyEntry entry = ImmutablePolicyEntry.fromJson(LABEL_END_USER, jsonObject);
+        assertThat(entry.getSubjects()).isEmpty();
+        assertThat(entry.getResources()).isEmpty();
     }
 
     @Test(expected = PolicyEntryInvalidException.class)
@@ -84,13 +86,15 @@ public final class ImmutablePolicyEntryTest {
         assertThat(entry.getImportableType()).isEqualTo(ImportableType.IMPLICIT);
     }
 
-    @Test(expected = DittoJsonException.class)
+    @Test
     public void testFromJsonOnlySchemaVersion() {
         final JsonObject jsonObject = JsonFactory.newObjectBuilder()
                 .set(JsonSchemaVersion.getJsonKey(), JsonSchemaVersion.V_2.toInt())
                 .build();
 
-        ImmutablePolicyEntry.fromJson("EndUser", jsonObject);
+        final PolicyEntry entry = ImmutablePolicyEntry.fromJson("EndUser", jsonObject);
+        assertThat(entry.getSubjects()).isEmpty();
+        assertThat(entry.getResources()).isEmpty();
     }
 
     @Test

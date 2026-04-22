@@ -28,12 +28,10 @@ import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 
-import org.eclipse.ditto.base.model.exceptions.DittoJsonException;
 import org.eclipse.ditto.base.model.json.JsonSchemaVersion;
 import org.eclipse.ditto.json.JsonArrayBuilder;
 import org.eclipse.ditto.json.JsonFactory;
 import org.eclipse.ditto.json.JsonField;
-import org.eclipse.ditto.json.JsonMissingFieldException;
 import org.eclipse.ditto.json.JsonObject;
 import org.eclipse.ditto.json.JsonPointer;
 import org.eclipse.ditto.json.JsonValue;
@@ -52,7 +50,8 @@ final class ImmutablePolicyEntry implements PolicyEntry {
     @Nullable private final Set<AllowedImportAddition> allowedImportAdditions;
     private final List<EntryReference> references;
 
-    private ImmutablePolicyEntry(final Label theLabel, final Subjects theSubjects, final Resources theResources,
+    private ImmutablePolicyEntry(final Label theLabel, final Subjects theSubjects,
+            final Resources theResources,
             @Nullable final List<String> namespaces, final ImportableType importableType,
             @Nullable final Set<AllowedImportAddition> allowedImportAdditions,
             @Nullable final List<EntryReference> references) {
@@ -197,30 +196,24 @@ final class ImmutablePolicyEntry implements PolicyEntry {
      * @return a new Policy entry which is initialised with the extracted data from {@code jsonObject}.
      * @throws NullPointerException if {@code label} or {@code jsonObject} is {@code null}.
      * @throws IllegalArgumentException if {@code label} is empty.
-     * @throws DittoJsonException if {@code jsonObject}
-     * <ul>
-     *     <li>is empty or</li>
-     *     <li>contains only a field with the schema version.</li>
-     * </ul>
+     * @throws NullPointerException if {@code jsonObject} is {@code null}.
      */
     public static PolicyEntry fromJson(final CharSequence label, final JsonObject jsonObject) {
         checkNotNull(jsonObject, "JSON object");
         final Label lbl = Label.of(label);
 
-        try {
-            final JsonObject subjectsJsonObject = jsonObject.getValueOrThrow(JsonFields.SUBJECTS);
-            final Subjects subjectsFromJson = PoliciesModelFactory.newSubjects(subjectsJsonObject);
-            final JsonObject resourcesJsonObject = jsonObject.getValueOrThrow(JsonFields.RESOURCES);
-            final Resources resourcesFromJson = PoliciesModelFactory.newResources(resourcesJsonObject);
-            final List<String> namespacesFromJson = readNamespaces(jsonObject);
-            final ImportableType importType = readImportableType(jsonObject).orElse(ImportableType.IMPLICIT);
-            final Set<AllowedImportAddition> additions = readAllowedImportAdditions(jsonObject);
-            final List<EntryReference> referencesFromJson = readReferences(jsonObject);
-            return new ImmutablePolicyEntry(lbl, subjectsFromJson, resourcesFromJson, namespacesFromJson,
-                    importType, additions, referencesFromJson);
-        } catch (final JsonMissingFieldException e) {
-            throw new DittoJsonException(e);
-        }
+        final Subjects subjectsFromJson = jsonObject.getValue(JsonFields.SUBJECTS)
+                .map(PoliciesModelFactory::newSubjects)
+                .orElseGet(PoliciesModelFactory::emptySubjects);
+        final Resources resourcesFromJson = jsonObject.getValue(JsonFields.RESOURCES)
+                .map(PoliciesModelFactory::newResources)
+                .orElseGet(PoliciesModelFactory::emptyResources);
+        final List<String> namespacesFromJson = readNamespaces(jsonObject);
+        final ImportableType importType = readImportableType(jsonObject).orElse(ImportableType.IMPLICIT);
+        final Set<AllowedImportAddition> additions = readAllowedImportAdditions(jsonObject);
+        final List<EntryReference> referencesFromJson = readReferences(jsonObject);
+        return new ImmutablePolicyEntry(lbl, subjectsFromJson, resourcesFromJson, namespacesFromJson,
+                importType, additions, referencesFromJson);
     }
 
     private static Optional<ImportableType> readImportableType(final JsonObject json) {

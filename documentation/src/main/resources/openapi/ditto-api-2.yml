@@ -10730,7 +10730,10 @@ components:
           $ref: '#/components/schemas/PolicyEntry'
     PolicyEntry:
       type: object
-      description: Single policy entry containing Subjects and Resources.
+      description: |-
+        Single policy entry. Both `subjects` and `resources` are optional — they
+        default to empty when absent. An entry may define `references` to inherit
+        subjects, resources, and namespaces from other entries (local or imported).
       properties:
         subjects:
           $ref: '#/components/schemas/Subjects'
@@ -10754,9 +10757,6 @@ components:
           $ref: '#/components/schemas/AllowedImportAdditions'
         references:
           $ref: '#/components/schemas/References'
-      required:
-        - subjects
-        - resources
     Subjects:
       type: object
       description: A SubjectEntry defines who is addressed.
