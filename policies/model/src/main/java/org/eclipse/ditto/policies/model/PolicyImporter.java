@@ -140,10 +140,16 @@ public final class PolicyImporter {
                         resolvedEntriesCs = CompletableFuture.completedFuture(loadedPolicy.getEntriesSet());
                     }
                     return resolvedEntriesCs.thenApply(resolvedEntries -> {
+                        // Resolve the loaded policy's own entry references before importing.
+                        // This ensures entries that inherit resources/subjects via references
+                        // have those values materialized before the references are stripped
+                        // during label rewriting.
+                        final Set<PolicyEntry> withResolvedRefs =
+                                resolveReferences(loadedPolicy, resolvedEntries);
                         final ImportedLabels importedLabels = policyImport.getEffectedImports()
                                 .map(EffectedImports::getImportedLabels)
                                 .orElse(ImportedLabels.none());
-                        return rewriteImportedLabels(importedPolicyId, resolvedEntries,
+                        return rewriteImportedLabels(importedPolicyId, withResolvedRefs,
                                 importedLabels, applyImportPrefix);
                     });
                 }).orElse(CompletableFuture.completedFuture(Collections.emptySet())));
@@ -202,11 +208,12 @@ public final class PolicyImporter {
         newVisited.addAll(transitiveIdSet);
         final Set<PolicyId> unmodifiableVisited = Collections.unmodifiableSet(newVisited);
 
-        // Resolve filtered imports without label prefixing — the entries are merged into the
-        // loaded policy's entries as if they were its own inline entries. The outer resolution
-        // applies the prefix.
+        // Resolve filtered imports WITH label prefixing so transitive entries don't collide
+        // with the loaded policy's own entries (e.g. both having a "driver" entry). The prefix
+        // allows resolveReferences to find the transitive entries by their import-prefixed labels.
+        // The outer resolution applies its own prefix on top.
         return mergeImportedPolicyEntries(loadedPolicy.getEntriesSet(), filteredImportsList,
-                policyLoader, depth + 1, false, unmodifiableVisited);
+                policyLoader, depth + 1, true, unmodifiableVisited);
     }
 
     private static Set<PolicyEntry> rewriteImportedLabels(final PolicyId importedPolicyId,
@@ -356,13 +363,8 @@ public final class PolicyImporter {
                 referencedEntry.getNamespaces().orElse(null),
                 ownEntry.getNamespaces().orElse(Collections.emptyList()));
 
-        // For local references, also merge subjects additively
-        final Subjects mergedSubjects;
-        if (ref.isLocalReference()) {
-            mergedSubjects = mergeSubjects(referencedEntry.getSubjects(), ownEntry.getSubjects());
-        } else {
-            mergedSubjects = ownEntry.getSubjects();
-        }
+        // Merge subjects additively for both local and import references
+        final Subjects mergedSubjects = mergeSubjects(referencedEntry.getSubjects(), ownEntry.getSubjects());
 
         // Narrow allowedImportAdditions for import references
         final Set<AllowedImportAddition> narrowedAllowed = ref.isImportReference()

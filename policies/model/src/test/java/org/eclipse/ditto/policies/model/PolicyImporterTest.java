@@ -337,9 +337,10 @@ public final class PolicyImporterTest {
         final Label importedDLabel = PoliciesModelFactory.newImportedLabel(policyIdD, dLabel);
         assertThat(entries.stream().anyMatch(e -> e.getLabel().equals(importedDLabel))).isTrue();
 
-        // B's transitive entries from C should also be resolved (single prefix — no double-prefix)
-        final Label importedRoleLabel = PoliciesModelFactory.newImportedLabel(policyIdB, roleLabel);
-        assertThat(entries.stream().anyMatch(e -> e.getLabel().equals(importedRoleLabel))).isTrue();
+        // B's transitive entries from C get double-prefixed: C-prefix inside B-prefix
+        final Label cPrefixedRole = PoliciesModelFactory.newImportedLabel(policyIdC, roleLabel);
+        final Label bPrefixedCRole = PoliciesModelFactory.newImportedLabel(policyIdB, cPrefixedRole);
+        assertThat(entries.stream().anyMatch(e -> e.getLabel().equals(bPrefixedCRole))).isTrue();
 
         // A's own entry should be preserved
         assertThat(entries.stream().anyMatch(e -> e.getLabel().equals(END_USER_LABEL))).isTrue();
@@ -447,9 +448,11 @@ public final class PolicyImporterTest {
                         PoliciesModelFactory.newPolicyImport(policyIdC, bEffected))),
                 Collections.emptyList());
 
-        // A imports B with entries=["ROLE"] and transitiveImports=["C"]
+        // A imports B with transitiveImports=["C"]. The entries filter includes the
+        // prefixed label since transitive entries carry import prefixes.
+        final Label cPrefixedRole = PoliciesModelFactory.newImportedLabel(policyIdC, roleLabel);
         final EffectedImports aEffected = PoliciesModelFactory.newEffectedImportedLabels(
-                Collections.singletonList(roleLabel), Collections.singletonList(policyIdC));
+                Collections.singletonList(cPrefixedRole), Collections.singletonList(policyIdC));
         final Policy policyA = PoliciesModelFactory.newPolicyBuilder(POLICY_ID)
                 .setPolicyImport(PoliciesModelFactory.newPolicyImport(policyIdB, aEffected))
                 .build();
@@ -466,10 +469,11 @@ public final class PolicyImporterTest {
         final Set<PolicyEntry> entries =
                 PolicyImporter.mergeImportedPolicyEntries(policyA, loader).toCompletableFuture().join();
 
-        // The EXPLICIT "ROLE" entry from C should be imported via B with a single prefix
-        final Label importedRoleLabel = PoliciesModelFactory.newImportedLabel(policyIdB, roleLabel);
+        // The EXPLICIT "ROLE" entry from C gets double-prefixed: C-prefix inside B-prefix
+        final Label expectedLabel = PoliciesModelFactory.newImportedLabel(policyIdB,
+                PoliciesModelFactory.newImportedLabel(policyIdC, roleLabel));
         final PolicyEntry mergedEntry = entries.stream()
-                .filter(e -> e.getLabel().equals(importedRoleLabel))
+                .filter(e -> e.getLabel().equals(expectedLabel))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError(
                         "Expected EXPLICIT ROLE entry not found. Available labels: " +
@@ -987,6 +991,215 @@ public final class PolicyImporterTest {
         return ImmutablePolicy.of(
                 importedPolicyId, PolicyLifecycle.ACTIVE, PolicyRevision.newInstance(1), null, null,
                 null, emptyPolicyImports(), policyEntries);
+    }
+
+    /**
+     * 3-level hierarchy: template → intermediate → leaf.
+     * Template defines resources on "driver" entry.
+     * Intermediate imports template and has a "driver" entry with references to template's driver + own subjects.
+     * Leaf imports intermediate with transitiveImports to template and references intermediate's driver.
+     *
+     * Verifies that the leaf's resolved driver entry has:
+     * - resources from the template (inherited via intermediate's reference, materialized during import)
+     * - subjects from the intermediate (alice, bob)
+     * - subjects from the leaf (charlie)
+     */
+    @Test
+    public void testThreeLevelReferenceResolution() {
+        final PolicyId templateId = PolicyId.of("com.example", "template");
+        final PolicyId intermediateId = PolicyId.of("com.example", "intermediate");
+        final PolicyId leafId = PolicyId.of("com.example", "leaf");
+
+        final ResourceKey locationResource = ResourceKey.newInstance("thing", JsonPointer.of("features/location"));
+        final ResourceKey fuelResource = ResourceKey.newInstance("thing", JsonPointer.of("features/fuel"));
+
+        // Template: driver entry with resources, no subjects
+        final PolicyEntry templateDriver = PoliciesModelFactory.newPolicyEntry(Label.of("driver"),
+                PoliciesModelFactory.emptySubjects(),
+                Resources.newInstance(
+                        Resource.newInstance("thing", JsonPointer.of("features/location"),
+                                EffectedPermissions.newInstance(
+                                        Permissions.newInstance("READ"), Permissions.none())),
+                        Resource.newInstance("thing", JsonPointer.of("features/fuel"),
+                                EffectedPermissions.newInstance(
+                                        Permissions.newInstance("READ"), Permissions.none()))),
+                null, ImportableType.IMPLICIT,
+                Collections.singleton(AllowedImportAddition.SUBJECTS), null);
+
+        final Policy templatePolicy = PoliciesModelFactory.newPolicyBuilder(templateId)
+                .set(templateDriver)
+                .build();
+
+        // Intermediate: imports template, driver entry with subjects + reference to template driver
+        final PolicyEntry intermediateDriver = PoliciesModelFactory.newPolicyEntry(Label.of("driver"),
+                Subjects.newInstance(
+                        Subject.newInstance(SubjectIssuer.GOOGLE, "alice"),
+                        Subject.newInstance(SubjectIssuer.GOOGLE, "bob")),
+                PoliciesModelFactory.emptyResources(),
+                null, ImportableType.IMPLICIT,
+                Collections.singleton(AllowedImportAddition.SUBJECTS),
+                Collections.singletonList(
+                        PoliciesModelFactory.newEntryReference(templateId, Label.of("driver"))));
+
+        final Policy intermediatePolicy = PoliciesModelFactory.newPolicyBuilder(intermediateId)
+                .set(intermediateDriver)
+                .setPolicyImport(PoliciesModelFactory.newPolicyImport(templateId, (EffectedImports) null))
+                .build();
+
+        // Leaf: imports intermediate with transitiveImports to template
+        final PolicyEntry leafDriver = PoliciesModelFactory.newPolicyEntry(Label.of("driver"),
+                Subjects.newInstance(Subject.newInstance(SubjectIssuer.GOOGLE, "charlie")),
+                PoliciesModelFactory.emptyResources(),
+                null, ImportableType.IMPLICIT, null,
+                Collections.singletonList(
+                        PoliciesModelFactory.newEntryReference(intermediateId, Label.of("driver"))));
+
+        final EffectedImports intermediateImport = PoliciesModelFactory.newEffectedImportedLabels(
+                Collections.emptyList(), Collections.singletonList(templateId));
+
+        final Policy leafPolicy = PoliciesModelFactory.newPolicyBuilder(leafId)
+                .set(leafDriver)
+                .setPolicyImport(PoliciesModelFactory.newPolicyImport(intermediateId, intermediateImport))
+                .build();
+
+        // Policy loader knows all three
+        final Function<PolicyId, CompletionStage<Optional<Policy>>> loader = id -> {
+            if (templateId.equals(id)) {
+                return CompletableFuture.completedFuture(Optional.of(templatePolicy));
+            } else if (intermediateId.equals(id)) {
+                return CompletableFuture.completedFuture(Optional.of(intermediatePolicy));
+            }
+            return CompletableFuture.completedFuture(Optional.empty());
+        };
+
+        // Resolve via withResolvedImports (the full pipeline)
+        final Policy resolved = leafPolicy.withResolvedImports(loader).toCompletableFuture().join();
+
+        // Find the leaf's resolved driver entry
+        final PolicyEntry resolvedDriver = resolved.getEntryFor(Label.of("driver"))
+                .orElseThrow(() -> new AssertionError("driver entry not found in resolved policy"));
+
+        // Verify resources from template are present (inherited via intermediate's reference)
+        assertThat(resolvedDriver.getResources().getResource(locationResource)).isPresent();
+        assertThat(resolvedDriver.getResources().getResource(fuelResource)).isPresent();
+
+        // Import references merge subjects additively — leaf's driver inherits alice+bob
+        // from the intermediate's resolved driver, plus its own charlie.
+        final Set<String> subjectIds = StreamSupport.stream(resolvedDriver.getSubjects().spliterator(), false)
+                .map(s -> s.getId().toString())
+                .collect(java.util.stream.Collectors.toSet());
+        assertThat(subjectIds).contains("google:alice", "google:bob", "google:charlie");
+    }
+
+    /**
+     * Verifies that a policy using only local references (no imports) correctly resolves
+     * references via withResolvedImports. This was a bug where the else-branch skipped
+     * resolveReferences entirely when imports were empty.
+     */
+    @Test
+    public void testLocalRefOnlyPolicyResolvesViaWithResolvedImports() {
+        final Label sharedLabel = Label.of("operators");
+        final Label consumerLabel = Label.of("reactor-op");
+
+        final SubjectId alice = SubjectId.newInstance(SubjectIssuer.GOOGLE, "alice");
+        final ResourceKey reactorResource = ResourceKey.newInstance("thing", JsonPointer.of("features/reactor"));
+
+        final PolicyEntry sharedEntry = ImmutablePolicyEntry.of(sharedLabel,
+                Subjects.newInstance(Subject.newInstance(alice)),
+                PoliciesModelFactory.emptyResources(),
+                ImportableType.IMPLICIT);
+
+        final PolicyEntry consumerEntry = PoliciesModelFactory.newPolicyEntry(consumerLabel,
+                PoliciesModelFactory.emptySubjects(),
+                Resources.newInstance(Resource.newInstance("thing", JsonPointer.of("features/reactor"),
+                        EffectedPermissions.newInstance(
+                                Permissions.newInstance("READ", "WRITE"), Permissions.none()))),
+                null, ImportableType.IMPLICIT, null,
+                Collections.singletonList(PoliciesModelFactory.newLocalEntryReference(sharedLabel)));
+
+        // No imports — only local references
+        final Policy policy = PoliciesModelFactory.newPolicyBuilder(POLICY_ID)
+                .set(sharedEntry)
+                .set(consumerEntry)
+                .build();
+
+        // Use withResolvedImports (with a no-op loader since there are no imports)
+        final Function<PolicyId, CompletionStage<Optional<Policy>>> noOpLoader =
+                id -> CompletableFuture.completedFuture(Optional.empty());
+
+        final Policy resolved = policy.withResolvedImports(noOpLoader).toCompletableFuture().join();
+
+        final PolicyEntry resolvedConsumer = resolved.getEntryFor(consumerLabel)
+                .orElseThrow(() -> new AssertionError("consumer entry not found"));
+
+        // Verify alice from shared entry is merged into consumer's subjects
+        final Set<String> subjectIds = StreamSupport.stream(resolvedConsumer.getSubjects().spliterator(), false)
+                .map(s -> s.getId().toString())
+                .collect(java.util.stream.Collectors.toSet());
+        assertThat(subjectIds).contains(alice.toString());
+
+        // Verify consumer's own resources are still there
+        assertThat(resolvedConsumer.getResources().getResource(reactorResource)).isPresent();
+    }
+
+    /**
+     * Verifies that intermediate policy's references are resolved before its entries are
+     * imported. Without this, resources inherited via references at the intermediate level
+     * would be lost during import (since rewriteLabel strips references).
+     */
+    @Test
+    public void testImportedPolicyReferencesAreResolvedBeforeImport() {
+        final PolicyId templateId = PolicyId.of("com.example", "tmpl");
+        final PolicyId importingId = PolicyId.of("com.example", "importer");
+
+        final ResourceKey attrResource = ResourceKey.newInstance("thing", JsonPointer.of("attributes"));
+
+        // Template: entry with resources
+        final PolicyEntry templateEntry = PoliciesModelFactory.newPolicyEntry(Label.of("role"),
+                PoliciesModelFactory.emptySubjects(),
+                Resources.newInstance(Resource.newInstance("thing", JsonPointer.of("attributes"),
+                        EffectedPermissions.newInstance(
+                                Permissions.newInstance("READ"), Permissions.none()))),
+                null, ImportableType.IMPLICIT,
+                Collections.singleton(AllowedImportAddition.SUBJECTS), null);
+
+        final Policy templatePolicy = PoliciesModelFactory.newPolicyBuilder(templateId)
+                .set(templateEntry)
+                .build();
+
+        // Importing policy: imports template, has entry referencing template's role
+        final PolicyEntry importingEntry = PoliciesModelFactory.newPolicyEntry(Label.of("role"),
+                Subjects.newInstance(Subject.newInstance(SubjectIssuer.GOOGLE, "user")),
+                PoliciesModelFactory.emptyResources(),
+                null, ImportableType.IMPLICIT, null,
+                Collections.singletonList(
+                        PoliciesModelFactory.newEntryReference(templateId, Label.of("role"))));
+
+        final Policy importingPolicy = PoliciesModelFactory.newPolicyBuilder(importingId)
+                .set(importingEntry)
+                .setPolicyImport(PoliciesModelFactory.newPolicyImport(templateId, (EffectedImports) null))
+                .build();
+
+        final Function<PolicyId, CompletionStage<Optional<Policy>>> loader = id -> {
+            if (templateId.equals(id)) {
+                return CompletableFuture.completedFuture(Optional.of(templatePolicy));
+            }
+            return CompletableFuture.completedFuture(Optional.empty());
+        };
+
+        final Policy resolved = importingPolicy.withResolvedImports(loader).toCompletableFuture().join();
+
+        final PolicyEntry resolvedRole = resolved.getEntryFor(Label.of("role"))
+                .orElseThrow(() -> new AssertionError("role entry not found"));
+
+        // Resources from template must be inherited via resolved reference
+        assertThat(resolvedRole.getResources().getResource(attrResource)).isPresent();
+
+        // Subject from importing policy's own entry
+        final Set<String> subjectIds = StreamSupport.stream(resolvedRole.getSubjects().spliterator(), false)
+                .map(s -> s.getId().toString())
+                .collect(java.util.stream.Collectors.toSet());
+        assertThat(subjectIds).contains("google:user");
     }
 
     private static Policy createPolicy() {
