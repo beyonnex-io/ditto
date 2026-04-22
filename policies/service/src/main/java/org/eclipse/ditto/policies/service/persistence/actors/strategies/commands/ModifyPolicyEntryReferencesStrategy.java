@@ -65,8 +65,15 @@ final class ModifyPolicyEntryReferencesStrategy
                     policyEntryNotFound(policyId, label, dittoHeaders), command);
         }
 
-        // Validate that all local references point to existing entries
+        // Validate references
         for (final EntryReference ref : references) {
+            if (ref.isLocalReference() && ref.getEntryLabel().equals(label)) {
+                return ResultFactory.newErrorResult(
+                        policyEntryInvalid(policyId, label,
+                                "Entry must not reference itself.",
+                                dittoHeaders),
+                        command);
+            }
             if (ref.isLocalReference() && nonNullPolicy.getEntryFor(ref.getEntryLabel()).isEmpty()) {
                 return ResultFactory.newErrorResult(
                         policyEntryInvalid(policyId, label,

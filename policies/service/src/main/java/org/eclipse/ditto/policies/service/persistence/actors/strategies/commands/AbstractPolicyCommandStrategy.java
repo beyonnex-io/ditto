@@ -379,6 +379,7 @@ abstract class AbstractPolicyCommandStrategy<C extends Command<C>, E extends Pol
     /**
      * Validates the referential integrity of all entry references in the given policy entries.
      * <ul>
+     *   <li>An entry must not reference itself.</li>
      *   <li>Local references must point to an entry that exists in {@code entries}.</li>
      *   <li>Import references must point to an import declared in {@code policy}.</li>
      * </ul>
@@ -407,6 +408,13 @@ abstract class AbstractPolicyCommandStrategy<C extends Command<C>, E extends Pol
 
         for (final PolicyEntry entry : entries) {
             for (final EntryReference ref : entry.getReferences()) {
+                if (ref.isLocalReference() && ref.getEntryLabel().equals(entry.getLabel())) {
+                    return Optional.of(ResultFactory.newErrorResult(
+                            policyEntryInvalid(policyId, entry.getLabel(),
+                                    "Entry must not reference itself.",
+                                    dittoHeaders),
+                            command));
+                }
                 if (ref.isLocalReference() && !entryLabels.contains(ref.getEntryLabel())) {
                     return Optional.of(ResultFactory.newErrorResult(
                             policyEntryInvalid(policyId, entry.getLabel(),

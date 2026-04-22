@@ -203,6 +203,40 @@ public final class ReferencesValidationStrategyTest extends AbstractPolicyComman
         verify(mock).onMutation(any(), any(), any(), any(boolean.class), any(boolean.class), eq(null));
     }
 
+    // -- Self-reference rejection --
+
+    @Test
+    public void modifyPolicyEntryReferencesRejectsSelfReference() {
+        final Policy policy = policyWithLocalReference();
+        final var command = ModifyPolicyEntryReferences.of(POLICY_ID, Label.of("reactor-op"),
+                List.of(PoliciesModelFactory.newLocalEntryReference(Label.of("reactor-op"))),
+                HEADERS);
+
+        assertErrorResult(modifyPolicyEntryReferencesStrategy, policy, command,
+                PolicyEntryModificationInvalidException.newBuilder(POLICY_ID, Label.of("reactor-op"))
+                        .description("Entry must not reference itself.")
+                        .build());
+    }
+
+    @Test
+    public void createPolicyRejectsSelfReference() {
+        final Policy policy = PoliciesModelFactory.newPolicyBuilder(POLICY_ID)
+                .setSubjectFor("admin", Subject.newInstance(SubjectIssuer.GOOGLE, "admin"))
+                .setGrantedPermissionsFor("admin", "policy", "/", "READ", "WRITE")
+                .setSubjectFor("self-ref", Subject.newInstance(SubjectIssuer.GOOGLE, "user"))
+                .setGrantedPermissionsFor("self-ref", "thing", "/", "READ")
+                .setReferencesFor("self-ref", List.of(
+                        PoliciesModelFactory.newLocalEntryReference(Label.of("self-ref"))))
+                .build();
+
+        final var command = CreatePolicy.of(policy, HEADERS);
+
+        assertErrorResult(createPolicyStrategy, null, command,
+                PolicyEntryModificationInvalidException.newBuilder(POLICY_ID, Label.of("self-ref"))
+                        .description("Entry must not reference itself.")
+                        .build());
+    }
+
     // -- CreatePolicy: reject when references are invalid --
 
     @Test
