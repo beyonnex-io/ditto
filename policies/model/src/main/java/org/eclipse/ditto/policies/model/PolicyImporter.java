@@ -17,6 +17,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.NoSuchElementException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -107,7 +108,7 @@ public final class PolicyImporter {
                         visited).toCompletableFuture())
                 .collect(Collectors.toList());
 
-        return CompletableFuture.allOf(importFutures.toArray(CompletableFuture[]::new))
+        return CompletableFuture.allOf(importFutures.toArray(new CompletableFuture[0]))
                 .thenApply(ignored -> {
                     final Set<PolicyEntry> result = new LinkedHashSet<>(baseEntries);
                     for (final CompletableFuture<Set<PolicyEntry>> future : importFutures) {
@@ -330,7 +331,8 @@ public final class PolicyImporter {
         if (ref.isImportReference()) {
             // Import reference: look up in resolved (label-prefixed) imported entries
             final Label referencedLabel = PoliciesModelFactory.newImportedLabel(
-                    ref.getImportedPolicyId().orElseThrow(), ref.getEntryLabel());
+                    ref.getImportedPolicyId().orElseThrow(NoSuchElementException::new),
+                    ref.getEntryLabel());
             referencedEntryOpt = resolvedEntries.stream()
                     .filter(e -> e.getLabel().equals(referencedLabel))
                     .findFirst();
@@ -339,7 +341,7 @@ public final class PolicyImporter {
             referencedEntryOpt = importingPolicy.getEntryFor(ref.getEntryLabel());
         }
 
-        if (referencedEntryOpt.isEmpty()) {
+        if (!referencedEntryOpt.isPresent()) {
             return ownEntry; // referenced entry not found, skip
         }
         final PolicyEntry referencedEntry = referencedEntryOpt.get();

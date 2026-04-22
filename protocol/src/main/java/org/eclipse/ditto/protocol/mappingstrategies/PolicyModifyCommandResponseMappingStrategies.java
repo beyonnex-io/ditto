@@ -13,6 +13,7 @@
 package org.eclipse.ditto.protocol.mappingstrategies;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -21,6 +22,10 @@ import java.util.stream.Stream;
 
 import javax.annotation.Nullable;
 
+import org.eclipse.ditto.base.model.common.HttpStatus;
+import org.eclipse.ditto.json.JsonValue;
+import org.eclipse.ditto.policies.model.EntryReference;
+import org.eclipse.ditto.policies.model.PoliciesModelFactory;
 import org.eclipse.ditto.policies.model.signals.commands.modify.CreatePolicyResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.DeletePolicyEntryReferencesResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.DeletePolicyEntryResponse;
@@ -250,11 +255,22 @@ final class PolicyModifyCommandResponseMappingStrategies implements MappingStrat
             final Consumer<AdaptableToSignalMapper<? extends PolicyModifyCommandResponse<?>>> streamBuilder) {
 
         streamBuilder.accept(AdaptableToSignalMapper.of(ModifyPolicyEntryReferencesResponse.TYPE,
-                mappingContext -> ModifyPolicyEntryReferencesResponse.newInstance(
-                        mappingContext.getPolicyIdFromTopicPath(),
-                        mappingContext.getLabelOrThrow(),
-                        mappingContext.getHttpStatusOrThrow(),
-                        mappingContext.getDittoHeaders())));
+                mappingContext -> {
+                    final List<EntryReference> refs =
+                            HttpStatus.CREATED.equals(mappingContext.getHttpStatusOrThrow())
+                                    ? mappingContext.getAdaptable().getPayload().getValue()
+                                            .filter(JsonValue::isArray)
+                                            .map(JsonValue::asArray)
+                                            .map(PoliciesModelFactory::parseEntryReferences)
+                                            .orElse(null)
+                                    : null;
+                    return ModifyPolicyEntryReferencesResponse.newInstance(
+                            mappingContext.getPolicyIdFromTopicPath(),
+                            mappingContext.getLabelOrThrow(),
+                            refs,
+                            mappingContext.getHttpStatusOrThrow(),
+                            mappingContext.getDittoHeaders());
+                }));
 
         streamBuilder.accept(AdaptableToSignalMapper.of(DeletePolicyEntryReferencesResponse.TYPE,
                 mappingContext -> DeletePolicyEntryReferencesResponse.newInstance(

@@ -98,10 +98,21 @@ final class ModifyPolicyEntryReferencesStrategy
         final PolicyEntryReferencesModified event =
                 PolicyEntryReferencesModified.of(policyId, label, references, nextRevision,
                         getEventTimestamp(), dittoHeaders, metadata);
-        final WithDittoHeaders response = appendETagHeaderIfProvided(command,
-                ModifyPolicyEntryReferencesResponse.of(policyId, label,
-                        createCommandResponseDittoHeaders(dittoHeaders, nextRevision)),
-                nonNullPolicy);
+
+        final boolean existingReferencesEmpty = nonNullPolicy.getEntryFor(label)
+                .map(entry -> entry.getReferences().isEmpty())
+                .orElse(true);
+
+        final ModifyPolicyEntryReferencesResponse rawResponse;
+        if (existingReferencesEmpty && !references.isEmpty()) {
+            rawResponse = ModifyPolicyEntryReferencesResponse.created(policyId, label, references,
+                    createCommandResponseDittoHeaders(dittoHeaders, nextRevision));
+        } else {
+            rawResponse = ModifyPolicyEntryReferencesResponse.modified(policyId, label,
+                    createCommandResponseDittoHeaders(dittoHeaders, nextRevision));
+        }
+
+        final WithDittoHeaders response = appendETagHeaderIfProvided(command, rawResponse, nonNullPolicy);
         return ResultFactory.newMutationResult(command, event, response);
     }
 

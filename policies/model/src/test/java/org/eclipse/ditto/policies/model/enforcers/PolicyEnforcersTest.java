@@ -14,8 +14,9 @@ package org.eclipse.ditto.policies.model.enforcers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
-import java.util.Set;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
 
 import org.eclipse.ditto.base.model.auth.AuthorizationContext;
 import org.eclipse.ditto.base.model.auth.AuthorizationSubject;
@@ -50,11 +51,12 @@ public final class PolicyEnforcersTest {
     @Test
     public void entryWithSubjectsAndResourcesIsIncluded() {
         final PolicyEntry entry = PoliciesModelFactory.newPolicyEntry(Label.of("included"),
-                List.of(Subject.newInstance("ditto:alice", SubjectType.GENERATED)),
-                List.of(Resource.newInstance(PoliciesResourceType.thingResource("/"),
-                        EffectedPermissions.newInstance(Set.of("READ"), Set.of()))));
+                Collections.singletonList(Subject.newInstance("ditto:alice", SubjectType.GENERATED)),
+                Collections.singletonList(Resource.newInstance(PoliciesResourceType.thingResource("/"),
+                        EffectedPermissions.newInstance(Collections.singleton("READ"),
+                                Collections.emptySet()))));
 
-        final Enforcer enforcer = PolicyEnforcers.defaultEvaluator(List.of(entry));
+        final Enforcer enforcer = PolicyEnforcers.defaultEvaluator(Collections.singletonList(entry));
 
         assertThat(enforcer.hasUnrestrictedPermissions(THING_ROOT, authContextOf(ALICE), "READ"))
                 .isTrue();
@@ -62,49 +64,44 @@ public final class PolicyEnforcersTest {
 
     @Test
     public void entryWithSubjectsButNoResourcesIsFiltered() {
-        // "subjects-only" has subjects but no resources — should be filtered out
         final PolicyEntry subjectsOnly = PoliciesModelFactory.newPolicyEntry(Label.of("subjects-only"),
-                List.of(Subject.newInstance("ditto:bob", SubjectType.GENERATED)),
-                List.of());
+                Collections.singletonList(Subject.newInstance("ditto:bob", SubjectType.GENERATED)),
+                Collections.emptyList());
 
-        // "valid" has both — should remain
         final PolicyEntry valid = PoliciesModelFactory.newPolicyEntry(Label.of("valid"),
-                List.of(Subject.newInstance("ditto:alice", SubjectType.GENERATED)),
-                List.of(Resource.newInstance(PoliciesResourceType.thingResource("/"),
-                        EffectedPermissions.newInstance(Set.of("READ"), Set.of()))));
+                Collections.singletonList(Subject.newInstance("ditto:alice", SubjectType.GENERATED)),
+                Collections.singletonList(Resource.newInstance(PoliciesResourceType.thingResource("/"),
+                        EffectedPermissions.newInstance(Collections.singleton("READ"),
+                                Collections.emptySet()))));
 
-        final Enforcer enforcer = PolicyEnforcers.defaultEvaluator(List.of(subjectsOnly, valid));
+        final Enforcer enforcer = PolicyEnforcers.defaultEvaluator(Arrays.asList(subjectsOnly, valid));
 
-        // Alice (from "valid" entry) should have READ
         assertThat(enforcer.hasUnrestrictedPermissions(THING_ROOT, authContextOf(ALICE), "READ"))
                 .isTrue();
-
-        // Bob (from "subjects-only" entry) should NOT have any permissions
         assertThat(enforcer.hasUnrestrictedPermissions(THING_ROOT, authContextOf(BOB), "READ"))
                 .isFalse();
     }
 
     @Test
     public void entryWithResourcesButNoSubjectsIsFiltered() {
-        // "resources-only" has resources but no subjects — should be filtered out
         final PolicyEntry resourcesOnly = PoliciesModelFactory.newPolicyEntry(Label.of("resources-only"),
-                List.of(),
-                List.of(Resource.newInstance(PoliciesResourceType.thingResource("/features/secret"),
-                        EffectedPermissions.newInstance(Set.of("READ", "WRITE"), Set.of()))));
+                Collections.emptyList(),
+                Collections.singletonList(Resource.newInstance(
+                        PoliciesResourceType.thingResource("/features/secret"),
+                        EffectedPermissions.newInstance(
+                                new HashSet<>(Arrays.asList("READ", "WRITE")),
+                                Collections.emptySet()))));
 
-        // "valid" has both — should remain
         final PolicyEntry valid = PoliciesModelFactory.newPolicyEntry(Label.of("valid"),
-                List.of(Subject.newInstance("ditto:alice", SubjectType.GENERATED)),
-                List.of(Resource.newInstance(PoliciesResourceType.thingResource("/"),
-                        EffectedPermissions.newInstance(Set.of("READ"), Set.of()))));
+                Collections.singletonList(Subject.newInstance("ditto:alice", SubjectType.GENERATED)),
+                Collections.singletonList(Resource.newInstance(PoliciesResourceType.thingResource("/"),
+                        EffectedPermissions.newInstance(Collections.singleton("READ"),
+                                Collections.emptySet()))));
 
-        final Enforcer enforcer = PolicyEnforcers.defaultEvaluator(List.of(resourcesOnly, valid));
+        final Enforcer enforcer = PolicyEnforcers.defaultEvaluator(Arrays.asList(resourcesOnly, valid));
 
-        // Alice should have READ on thing:/ from "valid"
         assertThat(enforcer.hasUnrestrictedPermissions(THING_ROOT, authContextOf(ALICE), "READ"))
                 .isTrue();
-
-        // No subject should have WRITE (the resources-only entry was filtered)
         assertThat(enforcer.getSubjectsWithUnrestrictedPermission(
                 ResourceKey.newInstance("thing", "/features/secret"), "WRITE"))
                 .isEmpty();
@@ -113,14 +110,15 @@ public final class PolicyEnforcersTest {
     @Test
     public void entryWithNoSubjectsAndNoResourcesIsFiltered() {
         final PolicyEntry empty = PoliciesModelFactory.newPolicyEntry(Label.of("empty"),
-                List.of(), List.of());
+                Collections.emptyList(), Collections.emptyList());
 
         final PolicyEntry valid = PoliciesModelFactory.newPolicyEntry(Label.of("valid"),
-                List.of(Subject.newInstance("ditto:alice", SubjectType.GENERATED)),
-                List.of(Resource.newInstance(PoliciesResourceType.thingResource("/"),
-                        EffectedPermissions.newInstance(Set.of("READ"), Set.of()))));
+                Collections.singletonList(Subject.newInstance("ditto:alice", SubjectType.GENERATED)),
+                Collections.singletonList(Resource.newInstance(PoliciesResourceType.thingResource("/"),
+                        EffectedPermissions.newInstance(Collections.singleton("READ"),
+                                Collections.emptySet()))));
 
-        final Enforcer enforcer = PolicyEnforcers.defaultEvaluator(List.of(empty, valid));
+        final Enforcer enforcer = PolicyEnforcers.defaultEvaluator(Arrays.asList(empty, valid));
 
         assertThat(enforcer.hasUnrestrictedPermissions(THING_ROOT, authContextOf(ALICE), "READ"))
                 .isTrue();
@@ -128,54 +126,44 @@ public final class PolicyEnforcersTest {
 
     @Test
     public void mixOfValidAndEmptyEntriesFiltersCorrectly() {
-        // Entry 1: Alice has READ on thing:/ (valid)
         final PolicyEntry aliceEntry = PoliciesModelFactory.newPolicyEntry(Label.of("alice"),
-                List.of(Subject.newInstance("ditto:alice", SubjectType.GENERATED)),
-                List.of(Resource.newInstance(PoliciesResourceType.thingResource("/"),
-                        EffectedPermissions.newInstance(Set.of("READ"), Set.of()))));
+                Collections.singletonList(Subject.newInstance("ditto:alice", SubjectType.GENERATED)),
+                Collections.singletonList(Resource.newInstance(PoliciesResourceType.thingResource("/"),
+                        EffectedPermissions.newInstance(Collections.singleton("READ"),
+                                Collections.emptySet()))));
 
-        // Entry 2: subjects but no resources (should be filtered)
         final PolicyEntry bobNoResources = PoliciesModelFactory.newPolicyEntry(Label.of("bob-no-resources"),
-                List.of(Subject.newInstance("ditto:bob", SubjectType.GENERATED)),
-                List.of());
+                Collections.singletonList(Subject.newInstance("ditto:bob", SubjectType.GENERATED)),
+                Collections.emptyList());
 
-        // Entry 3: resources but no subjects (should be filtered) — uses message resource type
-        //          to avoid overlap with thing resources from other entries
         final PolicyEntry noSubjectsResources = PoliciesModelFactory.newPolicyEntry(Label.of("no-subjects"),
-                List.of(),
-                List.of(Resource.newInstance(PoliciesResourceType.messageResource("/inbox"),
-                        EffectedPermissions.newInstance(Set.of("WRITE"), Set.of()))));
+                Collections.emptyList(),
+                Collections.singletonList(Resource.newInstance(
+                        PoliciesResourceType.messageResource("/inbox"),
+                        EffectedPermissions.newInstance(Collections.singleton("WRITE"),
+                                Collections.emptySet()))));
 
-        // Entry 4: Charlie has WRITE on thing:/ (valid)
         final PolicyEntry charlieEntry = PoliciesModelFactory.newPolicyEntry(Label.of("charlie"),
-                List.of(Subject.newInstance("ditto:charlie", SubjectType.GENERATED)),
-                List.of(Resource.newInstance(PoliciesResourceType.thingResource("/"),
-                        EffectedPermissions.newInstance(Set.of("WRITE"), Set.of()))));
+                Collections.singletonList(Subject.newInstance("ditto:charlie", SubjectType.GENERATED)),
+                Collections.singletonList(Resource.newInstance(PoliciesResourceType.thingResource("/"),
+                        EffectedPermissions.newInstance(Collections.singleton("WRITE"),
+                                Collections.emptySet()))));
 
         final Enforcer enforcer = PolicyEnforcers.defaultEvaluator(
-                List.of(aliceEntry, bobNoResources, noSubjectsResources, charlieEntry));
+                Arrays.asList(aliceEntry, bobNoResources, noSubjectsResources, charlieEntry));
 
-        // Alice has READ
         assertThat(enforcer.hasUnrestrictedPermissions(THING_ROOT, authContextOf(ALICE), "READ"))
                 .isTrue();
-        // Alice does NOT have WRITE
         assertThat(enforcer.hasUnrestrictedPermissions(THING_ROOT, authContextOf(ALICE), "WRITE"))
                 .isFalse();
-
-        // Bob has nothing (entry was filtered)
         assertThat(enforcer.hasUnrestrictedPermissions(THING_ROOT, authContextOf(BOB), "READ"))
                 .isFalse();
         assertThat(enforcer.hasUnrestrictedPermissions(THING_ROOT, authContextOf(BOB), "WRITE"))
                 .isFalse();
-
-        // Charlie has WRITE
         assertThat(enforcer.hasUnrestrictedPermissions(THING_ROOT, authContextOf(CHARLIE), "WRITE"))
                 .isTrue();
-        // Charlie does NOT have READ
         assertThat(enforcer.hasUnrestrictedPermissions(THING_ROOT, authContextOf(CHARLIE), "READ"))
                 .isFalse();
-
-        // No subject has WRITE on message:/inbox (the no-subjects entry was filtered)
         assertThat(enforcer.getSubjectsWithUnrestrictedPermission(
                 ResourceKey.newInstance("message", "/inbox"), "WRITE"))
                 .isEmpty();
@@ -183,29 +171,27 @@ public final class PolicyEnforcersTest {
 
     @Test
     public void entryWithOnlyRevokePermissionsIsNotFiltered() {
-        // Entry with subjects and resources (revoke only) — must NOT be filtered
         final PolicyEntry grantEntry = PoliciesModelFactory.newPolicyEntry(Label.of("grant"),
-                List.of(Subject.newInstance("ditto:alice", SubjectType.GENERATED)),
-                List.of(Resource.newInstance(PoliciesResourceType.thingResource("/"),
-                        EffectedPermissions.newInstance(Set.of("READ", "WRITE"), Set.of()))));
+                Collections.singletonList(Subject.newInstance("ditto:alice", SubjectType.GENERATED)),
+                Collections.singletonList(Resource.newInstance(PoliciesResourceType.thingResource("/"),
+                        EffectedPermissions.newInstance(
+                                new HashSet<>(Arrays.asList("READ", "WRITE")),
+                                Collections.emptySet()))));
 
         final PolicyEntry revokeEntry = PoliciesModelFactory.newPolicyEntry(Label.of("revoke"),
-                List.of(Subject.newInstance("ditto:alice", SubjectType.GENERATED)),
-                List.of(Resource.newInstance(PoliciesResourceType.thingResource("/features/secret"),
-                        EffectedPermissions.newInstance(Set.of(), Set.of("READ", "WRITE")))));
+                Collections.singletonList(Subject.newInstance("ditto:alice", SubjectType.GENERATED)),
+                Collections.singletonList(Resource.newInstance(
+                        PoliciesResourceType.thingResource("/features/secret"),
+                        EffectedPermissions.newInstance(Collections.emptySet(),
+                                new HashSet<>(Arrays.asList("READ", "WRITE"))))));
 
-        final Enforcer enforcer = PolicyEnforcers.defaultEvaluator(List.of(grantEntry, revokeEntry));
+        final Enforcer enforcer = PolicyEnforcers.defaultEvaluator(Arrays.asList(grantEntry, revokeEntry));
 
-        // Alice has READ on thing:/
         assertThat(enforcer.hasUnrestrictedPermissions(THING_ROOT, authContextOf(ALICE), "READ"))
-                .isFalse(); // revoked below in hierarchy → unrestricted returns false
-
-        // Alice has READ on thing:/attributes (no revoke here)
+                .isFalse();
         assertThat(enforcer.hasUnrestrictedPermissions(
                 ResourceKey.newInstance("thing", "/attributes"), authContextOf(ALICE), "READ"))
                 .isTrue();
-
-        // Alice does NOT have READ on the revoked path
         assertThat(enforcer.hasUnrestrictedPermissions(
                 ResourceKey.newInstance("thing", "/features/secret"), authContextOf(ALICE), "READ"))
                 .isFalse();
@@ -214,17 +200,17 @@ public final class PolicyEnforcersTest {
     @Test
     public void allEntriesFilteredProducesEmptyEnforcer() {
         final PolicyEntry noResources = PoliciesModelFactory.newPolicyEntry(Label.of("no-resources"),
-                List.of(Subject.newInstance("ditto:alice", SubjectType.GENERATED)),
-                List.of());
+                Collections.singletonList(Subject.newInstance("ditto:alice", SubjectType.GENERATED)),
+                Collections.emptyList());
 
         final PolicyEntry noSubjects = PoliciesModelFactory.newPolicyEntry(Label.of("no-subjects"),
-                List.of(),
-                List.of(Resource.newInstance(PoliciesResourceType.thingResource("/"),
-                        EffectedPermissions.newInstance(Set.of("READ"), Set.of()))));
+                Collections.emptyList(),
+                Collections.singletonList(Resource.newInstance(PoliciesResourceType.thingResource("/"),
+                        EffectedPermissions.newInstance(Collections.singleton("READ"),
+                                Collections.emptySet()))));
 
-        final Enforcer enforcer = PolicyEnforcers.defaultEvaluator(List.of(noResources, noSubjects));
+        final Enforcer enforcer = PolicyEnforcers.defaultEvaluator(Arrays.asList(noResources, noSubjects));
 
-        // Nobody has any permissions
         assertThat(enforcer.hasUnrestrictedPermissions(THING_ROOT, authContextOf(ALICE), "READ"))
                 .isFalse();
         assertThat(enforcer.getSubjectsWithUnrestrictedPermission(THING_ROOT, "READ"))

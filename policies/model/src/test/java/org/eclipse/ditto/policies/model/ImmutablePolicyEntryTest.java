@@ -18,6 +18,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import org.eclipse.ditto.base.model.exceptions.DittoJsonException;
@@ -415,7 +416,7 @@ public final class ImmutablePolicyEntryTest {
         assertThat(policyEntryJson.contains(PolicyEntry.JsonFields.REFERENCES.getPointer())).isTrue();
         final JsonArray refsArray = policyEntryJson.getValueOrThrow(PolicyEntry.JsonFields.REFERENCES);
         assertThat(refsArray).hasSize(1);
-        final JsonObject refObj = refsArray.get(0).orElseThrow().asObject();
+        final JsonObject refObj = refsArray.get(0).orElseThrow(NoSuchElementException::new).asObject();
         assertThat(refObj.getValueOrThrow(EntryReference.JsonFields.IMPORT)).isEqualTo("ns:imported");
         assertThat(refObj.getValueOrThrow(EntryReference.JsonFields.ENTRY)).isEqualTo("driver");
 
@@ -450,7 +451,7 @@ public final class ImmutablePolicyEntryTest {
         assertThat(policyEntryJson.contains(PolicyEntry.JsonFields.REFERENCES.getPointer())).isTrue();
         final JsonArray refsArray = policyEntryJson.getValueOrThrow(PolicyEntry.JsonFields.REFERENCES);
         assertThat(refsArray).hasSize(1);
-        final JsonObject refObj = refsArray.get(0).orElseThrow().asObject();
+        final JsonObject refObj = refsArray.get(0).orElseThrow(NoSuchElementException::new).asObject();
         assertThat(refObj.contains(EntryReference.JsonFields.IMPORT.getPointer())).isFalse();
         assertThat(refObj.getValueOrThrow(EntryReference.JsonFields.ENTRY)).isEqualTo("shared-subjects");
 
@@ -488,12 +489,12 @@ public final class ImmutablePolicyEntryTest {
         assertThat(refsArray).hasSize(2);
 
         // First element: import reference
-        final JsonObject importRefObj = refsArray.get(0).orElseThrow().asObject();
+        final JsonObject importRefObj = refsArray.get(0).orElseThrow(NoSuchElementException::new).asObject();
         assertThat(importRefObj.getValueOrThrow(EntryReference.JsonFields.IMPORT)).isEqualTo("ns:imported");
         assertThat(importRefObj.getValueOrThrow(EntryReference.JsonFields.ENTRY)).isEqualTo("driver");
 
         // Second element: local reference
-        final JsonObject localRefObj = refsArray.get(1).orElseThrow().asObject();
+        final JsonObject localRefObj = refsArray.get(1).orElseThrow(NoSuchElementException::new).asObject();
         assertThat(localRefObj.contains(EntryReference.JsonFields.IMPORT.getPointer())).isFalse();
         assertThat(localRefObj.getValueOrThrow(EntryReference.JsonFields.ENTRY)).isEqualTo("shared-subjects");
 

@@ -7468,8 +7468,25 @@ paths:
         - $ref: '#/components/parameters/TimeoutParam'
         - $ref: '#/components/parameters/ResponseRequiredParam'
       responses:
+        '201':
+          description: The references were successfully created (the entry had no references before).
+          headers:
+            ETag:
+              description: |-
+                The (current server-side) ETag for this (sub-)resource. For top-level resources it is in the format
+                "rev:[revision]", for sub-resources it has the format "hash:[calculated-hash]".
+              schema:
+                type: string
+            Location:
+              description: The location of the created references resource.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/References'
         '204':
-          description: The references were successfully updated.
+          description: The references were successfully updated (the entry already had references).
           headers:
             ETag:
               description: |-
