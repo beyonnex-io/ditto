@@ -416,7 +416,8 @@ class PolicyImportsPreEnforcerTest {
                             "resources": {
                                 "policy:/entries/IMPLICIT": { "grant": [ "READ" ], "revoke": [] }
                             },
-                            "importable": "implicit"
+                            "importable": "implicit",
+                            "allowedImportAdditions": ["subjects", "resources"]
                         },
                         "NEVER" : {
                             "subjects": {
