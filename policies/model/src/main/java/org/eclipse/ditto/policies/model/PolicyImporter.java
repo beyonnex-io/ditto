@@ -142,10 +142,8 @@ public final class PolicyImporter {
                         final ImportedLabels importedLabels = policyImport.getEffectedImports()
                                 .map(EffectedImports::getImportedLabels)
                                 .orElse(ImportedLabels.none());
-                        final EntriesAdditions entriesAdditions = policyImport.getEntriesAdditions()
-                                .orElse(null);
                         return rewriteImportedLabels(importedPolicyId, resolvedEntries,
-                                importedLabels, entriesAdditions, applyImportPrefix);
+                                importedLabels, applyImportPrefix);
                     });
                 }).orElse(CompletableFuture.completedFuture(Collections.emptySet())));
     }
@@ -158,7 +156,7 @@ public final class PolicyImporter {
      * <p>
      * Entries resolved from transitive imports are added with their original labels (no import prefix),
      * so that the outer resolution can correctly apply the single import prefix and match {@code entries}
-     * filters and {@code entriesAdditions} keys.
+     * filters and {@code references} resolution.
      * <p>
      * Cycle detection: transitive IDs that appear in {@code visited} are skipped to prevent infinite
      * recursion. Each level creates an immutable copy of the visited set with the current transitive IDs
@@ -212,40 +210,18 @@ public final class PolicyImporter {
 
     private static Set<PolicyEntry> rewriteImportedLabels(final PolicyId importedPolicyId,
             final Set<PolicyEntry> importedEntries, final Collection<Label> importedLabels,
-            @Nullable final EntriesAdditions entriesAdditions, final boolean applyImportPrefix) {
+            final boolean applyImportPrefix) {
 
         return importedEntries.stream()
                 .flatMap(importedEntry -> importEntry(importedLabels, importedEntry))
-                .map(entry -> applyAdditionsAndRewrite(importedPolicyId, entry, entriesAdditions,
-                        applyImportPrefix))
+                .map(entry -> rewriteLabel(importedPolicyId, entry, applyImportPrefix))
                 .collect(Collectors.toSet());
     }
 
-    private static PolicyEntry applyAdditionsAndRewrite(final PolicyId importedPolicyId,
-            final PolicyEntry entry, @Nullable final EntriesAdditions entriesAdditions,
-            final boolean applyImportPrefix) {
-
-        Subjects mergedSubjects = entry.getSubjects();
-        Resources mergedResources = entry.getResources();
-        List<String> mergedNamespaces = entry.getNamespaces().orElse(null);
-
-        if (entriesAdditions != null) {
-            final Optional<EntryAddition> addition = entriesAdditions.getAddition(entry.getLabel());
-            if (addition.isPresent()) {
-                final EntryAddition add = addition.get();
-                final Set<AllowedImportAddition> allowed = entry.getAllowedImportAdditions()
-                        .orElse(Collections.emptySet());
-                if (add.getSubjects().isPresent() && allowed.contains(AllowedImportAddition.SUBJECTS)) {
-                    mergedSubjects = mergeSubjects(mergedSubjects, add.getSubjects().get());
-                }
-                if (add.getResources().isPresent() && allowed.contains(AllowedImportAddition.RESOURCES)) {
-                    mergedResources = mergeResources(mergedResources, add.getResources().get());
-                }
-                if (add.getNamespaces().isPresent() && allowed.contains(AllowedImportAddition.NAMESPACES)) {
-                    mergedNamespaces = mergeNamespaces(mergedNamespaces, add.getNamespaces().get());
-                }
-            }
-        }
+    // Uses the 6-parameter factory intentionally: references are
+    // local concepts of the source policy and are not carried over during import.
+    private static PolicyEntry rewriteLabel(final PolicyId importedPolicyId,
+            final PolicyEntry entry, final boolean applyImportPrefix) {
 
         final Label finalLabel = applyImportPrefix
                 ? PoliciesModelFactory.newImportedLabel(importedPolicyId, entry.getLabel())
@@ -253,9 +229,9 @@ public final class PolicyImporter {
 
         return PoliciesModelFactory.newPolicyEntry(
                 finalLabel,
-                mergedSubjects,
-                mergedResources,
-                mergedNamespaces,
+                entry.getSubjects(),
+                entry.getResources(),
+                entry.getNamespaces().orElse(null),
                 entry.getImportableType(),
                 entry.getAllowedImportAdditions().orElse(null)
         );
@@ -272,10 +248,6 @@ public final class PolicyImporter {
             default:
                 return Stream.empty();
         }
-    }
-
-    private static Subjects mergeSubjects(final Subjects templateSubjects, final Subjects additionalSubjects) {
-        return templateSubjects.setSubjects(additionalSubjects);
     }
 
     // Note: inner merge is O(k) per resource due to immutable copy-on-write in Resources.setResource.
@@ -316,5 +288,123 @@ public final class PolicyImporter {
                 : new LinkedHashSet<>();
         merged.addAll(additionalNamespaces);
         return new ArrayList<>(merged);
+    }
+
+    /**
+     * Resolves {@link EntryReference}s on the importing policy's own entries. Each entry may declare a
+     * {@code references} array containing import references (pointing to imported policy entries) and/or
+     * local references (pointing to entries within the same policy).
+     * <p>
+     * For import references, the referenced entry is looked up in the resolved set (label-prefixed imported entries).
+     * For local references, the referenced entry is looked up directly in the importing policy.
+     * In both cases, resources, namespaces, and (for local references) subjects are additively merged.
+     *
+     * @param importingPolicy the policy whose entries may contain references.
+     * @param resolvedEntries the full set of resolved entries (own + imported, with prefixed labels).
+     * @return a new set with references resolved (merged with referenced entry content).
+     * @since 3.9.0
+     */
+    public static Set<PolicyEntry> resolveReferences(final Policy importingPolicy,
+            final Set<PolicyEntry> resolvedEntries) {
+
+        final Set<PolicyEntry> result = new LinkedHashSet<>(resolvedEntries);
+        for (final PolicyEntry ownEntry : importingPolicy) {
+            final List<EntryReference> refs = ownEntry.getReferences();
+            if (!refs.isEmpty()) {
+                PolicyEntry currentEntry = ownEntry;
+                for (final EntryReference ref : refs) {
+                    currentEntry = resolveOneReference(importingPolicy, resolvedEntries, currentEntry, ref);
+                }
+                // Replace the own entry in the result set with the fully merged entry
+                result.remove(ownEntry);
+                result.add(currentEntry);
+            }
+        }
+        return Collections.unmodifiableSet(result);
+    }
+
+    private static PolicyEntry resolveOneReference(final Policy importingPolicy,
+            final Set<PolicyEntry> resolvedEntries, final PolicyEntry ownEntry, final EntryReference ref) {
+
+        final Optional<PolicyEntry> referencedEntryOpt;
+        if (ref.isImportReference()) {
+            // Import reference: look up in resolved (label-prefixed) imported entries
+            final Label referencedLabel = PoliciesModelFactory.newImportedLabel(
+                    ref.getImportedPolicyId().orElseThrow(), ref.getEntryLabel());
+            referencedEntryOpt = resolvedEntries.stream()
+                    .filter(e -> e.getLabel().equals(referencedLabel))
+                    .findFirst();
+        } else {
+            // Local reference: look up directly in the importing policy by label
+            referencedEntryOpt = importingPolicy.getEntryFor(ref.getEntryLabel());
+        }
+
+        if (referencedEntryOpt.isEmpty()) {
+            return ownEntry; // referenced entry not found, skip
+        }
+        final PolicyEntry referencedEntry = referencedEntryOpt.get();
+        if (ref.isImportReference() && referencedEntry.getImportableType() == ImportableType.NEVER) {
+            return ownEntry; // import-referenced entry is not importable
+        }
+
+        // Merge resources and namespaces additively
+        final Resources mergedResources = mergeResources(
+                referencedEntry.getResources(), ownEntry.getResources());
+        final List<String> mergedNamespaces = mergeNamespaces(
+                referencedEntry.getNamespaces().orElse(null),
+                ownEntry.getNamespaces().orElse(Collections.emptyList()));
+
+        // For local references, also merge subjects additively
+        final Subjects mergedSubjects;
+        if (ref.isLocalReference()) {
+            mergedSubjects = mergeSubjects(referencedEntry.getSubjects(), ownEntry.getSubjects());
+        } else {
+            mergedSubjects = ownEntry.getSubjects();
+        }
+
+        // Narrow allowedImportAdditions for import references
+        final Set<AllowedImportAddition> narrowedAllowed = ref.isImportReference()
+                ? narrowAllowedAdditions(referencedEntry, ownEntry)
+                : ownEntry.getAllowedImportAdditions().orElse(null);
+
+        return PoliciesModelFactory.newPolicyEntry(
+                ownEntry.getLabel(),
+                mergedSubjects,
+                mergedResources,
+                mergedNamespaces.isEmpty() ? null : mergedNamespaces,
+                ownEntry.getImportableType(),
+                narrowedAllowed,
+                ownEntry.getReferences().isEmpty() ? null : ownEntry.getReferences()
+        );
+    }
+
+    @Nullable
+    private static Set<AllowedImportAddition> narrowAllowedAdditions(final PolicyEntry referenced,
+            final PolicyEntry own) {
+        final Set<AllowedImportAddition> referencedAllowed = referenced.getAllowedImportAdditions().orElse(null);
+        final Set<AllowedImportAddition> ownAllowed = own.getAllowedImportAdditions().orElse(null);
+        if (referencedAllowed != null && ownAllowed != null) {
+            final Set<AllowedImportAddition> intersection = new LinkedHashSet<>(referencedAllowed);
+            intersection.retainAll(ownAllowed);
+            return intersection;
+        } else if (ownAllowed != null) {
+            return ownAllowed;
+        } else {
+            return referencedAllowed;
+        }
+    }
+
+    private static Subjects mergeSubjects(final Subjects template, final Subjects additional) {
+        final List<Subject> merged = new ArrayList<>();
+        template.forEach(merged::add);
+        final Set<String> seenIds = merged.stream()
+                .map(s -> s.getId().toString())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        for (final Subject subject : additional) {
+            if (seenIds.add(subject.getId().toString())) {
+                merged.add(subject);
+            }
+        }
+        return PoliciesModelFactory.newSubjects(merged);
     }
 }

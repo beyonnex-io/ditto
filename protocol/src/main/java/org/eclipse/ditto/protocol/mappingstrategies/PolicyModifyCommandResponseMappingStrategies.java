@@ -21,38 +21,27 @@ import java.util.stream.Stream;
 
 import javax.annotation.Nullable;
 
-import org.eclipse.ditto.json.JsonKey;
-import org.eclipse.ditto.json.JsonValue;
-import org.eclipse.ditto.policies.model.EntryAddition;
-import org.eclipse.ditto.policies.model.Label;
-import org.eclipse.ditto.policies.model.PoliciesModelFactory;
-import org.eclipse.ditto.policies.model.ImportsAlias;
 import org.eclipse.ditto.policies.model.signals.commands.modify.CreatePolicyResponse;
+import org.eclipse.ditto.policies.model.signals.commands.modify.DeletePolicyEntryReferencesResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.DeletePolicyEntryResponse;
-import org.eclipse.ditto.policies.model.signals.commands.modify.DeletePolicyImportEntryAdditionResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.DeletePolicyImportResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.DeletePolicyResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.DeleteResourceResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.DeletePolicyImportsResponse;
-import org.eclipse.ditto.policies.model.signals.commands.modify.DeleteImportsAliasResponse;
-import org.eclipse.ditto.policies.model.signals.commands.modify.DeleteImportsAliasesResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.DeleteSubjectResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyEntriesResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyEntryAllowedImportAdditionsResponse;
+import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyEntryReferencesResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyEntryImportableResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyEntryNamespacesResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyEntryResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyImportEntriesResponse;
-import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyImportEntriesAdditionsResponse;
-import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyImportEntryAdditionResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyImportTransitiveImportsResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyImportResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyImportsResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyResourceResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyResourcesResponse;
-import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyImportsAliasResponse;
-import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyImportsAliasesResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifySubjectResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifySubjectsResponse;
 import org.eclipse.ditto.policies.model.signals.commands.modify.PolicyModifyCommandResponse;
@@ -92,15 +81,13 @@ final class PolicyModifyCommandResponseMappingStrategies implements MappingStrat
 
         addPolicyEntryImportableResponses(streamBuilder);
 
-        addPolicyImportEntriesResponses(streamBuilder);
+        addPolicyEntryReferencesResponses(streamBuilder);
 
-        addPolicyImportEntriesAdditionsResponses(streamBuilder);
+        addPolicyImportEntriesResponses(streamBuilder);
 
         addPolicyImportTransitiveImportsResponses(streamBuilder);
 
         addPolicyImportsResponses(streamBuilder);
-
-        addImportsAliasesResponses(streamBuilder);
 
         final Stream<AdaptableToSignalMapper<? extends PolicyModifyCommandResponse<?>>> mappers = streamBuilder.build();
         return mappers.collect(Collectors.toMap(AdaptableToSignalMapper::getSignalType, Function.identity()));
@@ -259,6 +246,24 @@ final class PolicyModifyCommandResponseMappingStrategies implements MappingStrat
                         mappingContext.getDittoHeaders())));
     }
 
+    private static void addPolicyEntryReferencesResponses(
+            final Consumer<AdaptableToSignalMapper<? extends PolicyModifyCommandResponse<?>>> streamBuilder) {
+
+        streamBuilder.accept(AdaptableToSignalMapper.of(ModifyPolicyEntryReferencesResponse.TYPE,
+                mappingContext -> ModifyPolicyEntryReferencesResponse.newInstance(
+                        mappingContext.getPolicyIdFromTopicPath(),
+                        mappingContext.getLabelOrThrow(),
+                        mappingContext.getHttpStatusOrThrow(),
+                        mappingContext.getDittoHeaders())));
+
+        streamBuilder.accept(AdaptableToSignalMapper.of(DeletePolicyEntryReferencesResponse.TYPE,
+                mappingContext -> DeletePolicyEntryReferencesResponse.newInstance(
+                        mappingContext.getPolicyIdFromTopicPath(),
+                        mappingContext.getLabelOrThrow(),
+                        mappingContext.getHttpStatusOrThrow(),
+                        mappingContext.getDittoHeaders())));
+    }
+
     private static void addPolicyImportEntriesResponses(
             final Consumer<AdaptableToSignalMapper<? extends PolicyModifyCommandResponse<?>>> streamBuilder) {
 
@@ -266,45 +271,6 @@ final class PolicyModifyCommandResponseMappingStrategies implements MappingStrat
                 mappingContext -> ModifyPolicyImportEntriesResponse.newInstance(
                         mappingContext.getPolicyIdFromTopicPath(),
                         mappingContext.getImportedPolicyId(),
-                        mappingContext.getHttpStatusOrThrow(),
-                        mappingContext.getDittoHeaders())));
-    }
-
-    private static void addPolicyImportEntriesAdditionsResponses(
-            final Consumer<AdaptableToSignalMapper<? extends PolicyModifyCommandResponse<?>>> streamBuilder) {
-
-        streamBuilder.accept(AdaptableToSignalMapper.of(ModifyPolicyImportEntriesAdditionsResponse.TYPE,
-                mappingContext -> ModifyPolicyImportEntriesAdditionsResponse.newInstance(
-                        mappingContext.getPolicyIdFromTopicPath(),
-                        mappingContext.getImportedPolicyId(),
-                        mappingContext.getHttpStatusOrThrow(),
-                        mappingContext.getDittoHeaders())));
-
-        streamBuilder.accept(AdaptableToSignalMapper.of(ModifyPolicyImportEntryAdditionResponse.TYPE,
-                mappingContext -> {
-                    final Label label = Label.of(mappingContext.getAdaptable().getPayload().getPath().get(3)
-                            .map(JsonKey::toString).orElse(""));
-                    final EntryAddition entryAddition =
-                            mappingContext.getAdaptable().getPayload().getValue()
-                                    .filter(JsonValue::isObject)
-                                    .map(JsonValue::asObject)
-                                    .map(obj -> PoliciesModelFactory.newEntryAddition(label, obj))
-                                    .orElse(null);
-                    return ModifyPolicyImportEntryAdditionResponse.newInstance(
-                            mappingContext.getPolicyIdFromTopicPath(),
-                            mappingContext.getImportedPolicyId(),
-                            label,
-                            entryAddition,
-                            mappingContext.getHttpStatusOrThrow(),
-                            mappingContext.getDittoHeaders());
-                }));
-
-        streamBuilder.accept(AdaptableToSignalMapper.of(DeletePolicyImportEntryAdditionResponse.TYPE,
-                mappingContext -> DeletePolicyImportEntryAdditionResponse.newInstance(
-                        mappingContext.getPolicyIdFromTopicPath(),
-                        mappingContext.getImportedPolicyId(),
-                        Label.of(mappingContext.getAdaptable().getPayload().getPath().get(3)
-                                .map(JsonKey::toString).orElse("")),
                         mappingContext.getHttpStatusOrThrow(),
                         mappingContext.getDittoHeaders())));
     }
@@ -325,48 +291,6 @@ final class PolicyModifyCommandResponseMappingStrategies implements MappingStrat
 
         streamBuilder.accept(AdaptableToSignalMapper.of(DeletePolicyImportsResponse.TYPE,
                 mappingContext -> DeletePolicyImportsResponse.newInstance(
-                        mappingContext.getPolicyIdFromTopicPath(),
-                        mappingContext.getHttpStatusOrThrow(),
-                        mappingContext.getDittoHeaders())));
-    }
-
-    private static void addImportsAliasesResponses(
-            final Consumer<AdaptableToSignalMapper<? extends PolicyModifyCommandResponse<?>>> streamBuilder) {
-
-        streamBuilder.accept(AdaptableToSignalMapper.of(ModifyImportsAliasesResponse.TYPE,
-                mappingContext -> ModifyImportsAliasesResponse.newInstance(
-                        mappingContext.getPolicyIdFromTopicPath(),
-                        mappingContext.getHttpStatusOrThrow(),
-                        mappingContext.getDittoHeaders())));
-
-        streamBuilder.accept(AdaptableToSignalMapper.of(ModifyImportsAliasResponse.TYPE,
-                mappingContext -> {
-                    final Label label = Label.of(mappingContext.getAdaptable().getPayload().getPath().get(1)
-                            .map(JsonKey::toString).orElse(""));
-                    final ImportsAlias importsAlias =
-                            mappingContext.getAdaptable().getPayload().getValue()
-                                    .filter(JsonValue::isObject)
-                                    .map(JsonValue::asObject)
-                                    .map(obj -> PoliciesModelFactory.newImportsAlias(label, obj))
-                                    .orElse(null);
-                    return ModifyImportsAliasResponse.newInstance(
-                            mappingContext.getPolicyIdFromTopicPath(),
-                            label,
-                            importsAlias,
-                            mappingContext.getHttpStatusOrThrow(),
-                            mappingContext.getDittoHeaders());
-                }));
-
-        streamBuilder.accept(AdaptableToSignalMapper.of(DeleteImportsAliasResponse.TYPE,
-                mappingContext -> DeleteImportsAliasResponse.newInstance(
-                        mappingContext.getPolicyIdFromTopicPath(),
-                        Label.of(mappingContext.getAdaptable().getPayload().getPath().get(1)
-                                .map(JsonKey::toString).orElse("")),
-                        mappingContext.getHttpStatusOrThrow(),
-                        mappingContext.getDittoHeaders())));
-
-        streamBuilder.accept(AdaptableToSignalMapper.of(DeleteImportsAliasesResponse.TYPE,
-                mappingContext -> DeleteImportsAliasesResponse.newInstance(
                         mappingContext.getPolicyIdFromTopicPath(),
                         mappingContext.getHttpStatusOrThrow(),
                         mappingContext.getDittoHeaders())));

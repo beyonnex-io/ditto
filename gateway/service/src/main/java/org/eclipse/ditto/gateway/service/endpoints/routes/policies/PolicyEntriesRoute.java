@@ -34,6 +34,7 @@ import org.eclipse.ditto.json.JsonValue;
 import org.eclipse.ditto.jwt.model.JsonWebToken;
 import org.eclipse.ditto.placeholders.UnresolvedPlaceholderException;
 import org.eclipse.ditto.policies.model.AllowedImportAddition;
+import org.eclipse.ditto.policies.model.EntryReference;
 import org.eclipse.ditto.policies.model.ImportableType;
 import org.eclipse.ditto.policies.model.Label;
 import org.eclipse.ditto.policies.model.PolicyEntryInvalidException;
@@ -52,9 +53,11 @@ import org.eclipse.ditto.policies.model.signals.commands.actions.ActivateTokenIn
 import org.eclipse.ditto.policies.model.signals.commands.actions.DeactivateTokenIntegration;
 import org.eclipse.ditto.policies.model.signals.commands.exceptions.PolicyActionFailedException;
 import org.eclipse.ditto.policies.model.PolicyEntryNamespaces;
+import org.eclipse.ditto.policies.model.signals.commands.modify.DeletePolicyEntryReferences;
 import org.eclipse.ditto.policies.model.signals.commands.modify.DeletePolicyEntry;
 import org.eclipse.ditto.policies.model.signals.commands.modify.DeleteResource;
 import org.eclipse.ditto.policies.model.signals.commands.modify.DeleteSubject;
+import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyEntryReferences;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyEntries;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyEntry;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyEntryAllowedImportAdditions;
@@ -64,6 +67,7 @@ import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyResource;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyResources;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifySubject;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifySubjects;
+import org.eclipse.ditto.policies.model.signals.commands.query.RetrievePolicyEntryReferences;
 import org.eclipse.ditto.policies.model.signals.commands.query.RetrievePolicyEntries;
 import org.eclipse.ditto.policies.model.signals.commands.query.RetrievePolicyEntry;
 import org.eclipse.ditto.policies.model.signals.commands.query.RetrievePolicyEntryAllowedImportAdditions;
@@ -88,6 +92,7 @@ final class PolicyEntriesRoute extends AbstractRoute {
     private static final String PATH_SUFFIX_ALLOWED_IMPORT_ADDITIONS = "allowedImportAdditions";
     private static final String PATH_SUFFIX_NAMESPACES = "namespaces";
     private static final String PATH_SUFFIX_IMPORTABLE = "importable";
+    private static final String PATH_SUFFIX_REFERENCES = "references";
 
     private static final String PATH_ACTIONS = "actions";
 
@@ -126,6 +131,7 @@ final class PolicyEntriesRoute extends AbstractRoute {
                 policyEntryResourcesEntry(ctx, dittoHeaders, policyId),
                 policyEntryAllowedImportAdditions(ctx, dittoHeaders, policyId),
                 policyEntryNamespaces(ctx, dittoHeaders, policyId),
+                policyEntryReferences(ctx, dittoHeaders, policyId),
                 policyEntryImportable(ctx, dittoHeaders, policyId),
                 policyEntryActions(ctx, dittoHeaders, policyId, authResult)
         );
@@ -450,6 +456,42 @@ final class PolicyEntriesRoute extends AbstractRoute {
     private static List<String> parseNamespaces(final String jsonString) {
         final JsonArray jsonArray = wrapJsonRuntimeException(() -> JsonFactory.newArray(jsonString));
         return PolicyEntryNamespaces.fromJsonArray(jsonArray);
+    }
+
+    /*
+     * Describes {@code /entries/<label>/references} route.
+     */
+    private Route policyEntryReferences(final RequestContext ctx, final DittoHeaders dittoHeaders,
+            final PolicyId policyId) {
+
+        return rawPathPrefix(PathMatchers.slash().concat(PathMatchers.segment()), label ->
+                rawPathPrefix(PathMatchers.slash().concat(PATH_SUFFIX_REFERENCES), () ->
+                        pathEndOrSingleSlash(() ->
+                                concat(
+                                        get(() -> handlePerRequest(ctx, RetrievePolicyEntryReferences.of(
+                                                policyId, Label.of(label), dittoHeaders))),
+                                        put(() -> ensureMediaTypeJsonWithFallbacksThenExtractDataBytes(ctx,
+                                                dittoHeaders,
+                                                payloadSource -> handlePerRequest(ctx, dittoHeaders,
+                                                        payloadSource,
+                                                        refsJson -> ModifyPolicyEntryReferences.of(
+                                                                policyId, Label.of(label),
+                                                                parseReferences(refsJson),
+                                                                dittoHeaders)))),
+                                        delete(() -> handlePerRequest(ctx, DeletePolicyEntryReferences.of(
+                                                policyId, Label.of(label), dittoHeaders)))
+                                )
+                        )
+                )
+        );
+    }
+
+    private static List<EntryReference> parseReferences(final String jsonString) {
+        final JsonArray jsonArray = wrapJsonRuntimeException(() -> JsonFactory.newArray(jsonString));
+        return jsonArray.stream()
+                .filter(JsonValue::isObject)
+                .map(value -> PoliciesModelFactory.newEntryReference(value.asObject()))
+                .collect(Collectors.toList());
     }
 
     /*

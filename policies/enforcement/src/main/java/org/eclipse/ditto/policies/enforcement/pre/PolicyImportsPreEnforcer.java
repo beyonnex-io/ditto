@@ -12,7 +12,6 @@
  */
 package org.eclipse.ditto.policies.enforcement.pre;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -33,14 +32,8 @@ import org.eclipse.ditto.policies.api.Permission;
 import org.eclipse.ditto.policies.enforcement.PolicyEnforcer;
 import org.eclipse.ditto.policies.enforcement.PolicyEnforcerProvider;
 import org.eclipse.ditto.policies.enforcement.PolicyEnforcerProviderExtension;
-import org.eclipse.ditto.policies.model.AllowedImportAddition;
-import org.eclipse.ditto.policies.model.EffectedImports;
-import org.eclipse.ditto.policies.model.EntriesAdditions;
-import org.eclipse.ditto.policies.model.EntryAddition;
-import org.eclipse.ditto.policies.model.ImportsAlias;
-import org.eclipse.ditto.policies.model.ImportsAliasTarget;
+import org.eclipse.ditto.policies.model.EntryReference;
 import org.eclipse.ditto.policies.model.ImportableType;
-import org.eclipse.ditto.policies.model.ImportedLabels;
 import org.eclipse.ditto.policies.model.Label;
 import org.eclipse.ditto.policies.model.PoliciesModelFactory;
 import org.eclipse.ditto.policies.model.Policy;
@@ -55,10 +48,7 @@ import org.eclipse.ditto.policies.model.signals.commands.modify.CreatePolicy;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicy;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyImport;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyImports;
-import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyImportEntriesAdditions;
-import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyImportEntryAddition;
-import org.eclipse.ditto.policies.model.signals.commands.modify.ModifySubject;
-import org.eclipse.ditto.policies.model.signals.commands.modify.ModifySubjects;
+import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyEntryReferences;
 import org.eclipse.ditto.policies.model.signals.commands.modify.PolicyModifyCommand;
 
 import com.typesafe.config.Config;
@@ -68,7 +58,7 @@ import com.typesafe.config.Config;
  * <p>
  * <b>Note:</b> The validation performed here is best-effort. The pre-enforcer reads policies from the enforcer cache,
  * but the persistence actor applies the command against its authoritative state. A concurrent modification (e.g. a
- * racing {@code ModifyImportsAlias}) between cache read and persistence write could change the targets or
+ * racing modification) between cache read and persistence write could change the targets or
  * allowedImportAdditions, making the pre-enforcer check stale (TOCTOU). The pre-enforcer therefore acts as a
  * first line of defense, not a guarantee.
  */
@@ -110,14 +100,8 @@ public class PolicyImportsPreEnforcer implements PreEnforcer {
             return doApply(modifyPolicyImports.getPolicyImports().stream(), modifyPolicyImports);
         } else if (signal instanceof ModifyPolicyImport modifyPolicyImport) {
             return doApply(Stream.of(modifyPolicyImport.getPolicyImport()), modifyPolicyImport);
-        } else if (signal instanceof ModifySubject modifySubject) {
-            return validateAliasSubjectModification(modifySubject, modifySubject.getLabel());
-        } else if (signal instanceof ModifySubjects modifySubjects) {
-            return validateAliasSubjectModification(modifySubjects, modifySubjects.getLabel());
-        } else if (signal instanceof ModifyPolicyImportEntryAddition modifyEntryAddition) {
-            return validateEntryAdditionAgainstImportedPolicy(modifyEntryAddition);
-        } else if (signal instanceof ModifyPolicyImportEntriesAdditions modifyEntriesAdditions) {
-            return validateEntriesAdditionsAgainstImportedPolicy(modifyEntriesAdditions);
+        } else if (signal instanceof ModifyPolicyEntryReferences modifyReferences) {
+            return validateReferencesModification(modifyReferences);
         } else {
             return CompletableFuture.completedFuture(signal);
         }
@@ -186,259 +170,114 @@ public class PolicyImportsPreEnforcer implements PreEnforcer {
             throw errorForPolicyModifyCommand(policyImport);
         }
 
-        // validate entriesAdditions against the imported policy's allowedImportAdditions
-        validateEntriesAdditions(policyImport, importedPolicy, command.getDittoHeaders());
-
         return true;
     }
 
-    private static void validateEntriesAdditions(final PolicyImport policyImport, final Policy importedPolicy,
-            final DittoHeaders dittoHeaders) {
-        final Optional<EntriesAdditions> additionsOpt = policyImport.getEntriesAdditions();
-        if (additionsOpt.isEmpty()) {
-            return;
-        }
-        final ImportedLabels declaredEntries = policyImport.getEffectedImports()
-                .map(EffectedImports::getImportedLabels)
-                .orElse(ImportedLabels.none());
-        final EntriesAdditions additions = additionsOpt.get();
-        for (final EntryAddition addition : additions) {
-            final Label label = addition.getLabel();
-            if (!declaredEntries.contains(label)) {
-                throw PolicyImportInvalidException.newBuilder()
-                        .message("The policy import for '" + policyImport.getImportedPolicyId() +
-                                "' contains entriesAdditions for entry '" + label +
-                                "' which is not listed in 'entries'.")
-                        .description("Every label used in 'entriesAdditions' must also be declared in the " +
-                                "'entries' array of the policy import.")
-                        .dittoHeaders(dittoHeaders)
-                        .build();
-            }
-            final Optional<PolicyEntry> entryOpt = importedPolicy.getEntryFor(label);
-            if (entryOpt.isEmpty()) {
-                // entry doesn't exist in imported policy — will be silently ignored at merge time
-                continue;
-            }
-            final Set<AllowedImportAddition> allowed = entryOpt.get().getAllowedImportAdditions()
-                    .orElse(java.util.Collections.emptySet());
-            if (addition.getSubjects().isPresent() &&
-                    !allowed.contains(AllowedImportAddition.SUBJECTS)) {
-                throw PolicyImportInvalidException.newBuilder()
-                        .message("The policy import for '" + policyImport.getImportedPolicyId() +
-                                "' contains disallowed subject additions for entry '" + label + "'.")
-                        .description("The imported policy entry '" + label +
-                                "' does not allow subject additions. Its 'allowedImportAdditions' is: " + allowed)
-                        .dittoHeaders(dittoHeaders)
-                        .build();
-            }
-            if (addition.getResources().isPresent() &&
-                    !allowed.contains(AllowedImportAddition.RESOURCES)) {
-                throw PolicyImportInvalidException.newBuilder()
-                        .message("The policy import for '" + policyImport.getImportedPolicyId() +
-                                "' contains disallowed resource additions for entry '" + label + "'.")
-                        .description("The imported policy entry '" + label +
-                                "' does not allow resource additions. Its 'allowedImportAdditions' is: " + allowed)
-                        .dittoHeaders(dittoHeaders)
-                        .build();
-            }
-            if (addition.getNamespaces().isPresent() &&
-                    !allowed.contains(AllowedImportAddition.NAMESPACES)) {
-                throw PolicyImportInvalidException.newBuilder()
-                        .message("The policy import for '" + policyImport.getImportedPolicyId() +
-                                "' contains disallowed namespace additions for entry '" + label + "'.")
-                        .description("The imported policy entry '" + label +
-                                "' does not allow namespace additions. Its 'allowedImportAdditions' is: " + allowed)
-                        .dittoHeaders(dittoHeaders)
-                        .build();
-            }
-        }
-    }
-
     /**
-     * Validates that subject modifications through an imports alias are permitted by the imported policy's
-     * {@code allowedImportAdditions}. If the label is not an alias, the command passes through unchanged.
+     * Validates a {@link ModifyPolicyEntryReferences} command by checking each import reference
+     * in the list: verifying that the referenced import exists in the importing policy, that the
+     * referenced entry in the imported policy permits being referenced (importable != NEVER), and
+     * that the caller has READ access on the referenced entry. Local references (within the same
+     * policy) are not validated here -- the persistence actor handles entry existence checks.
      */
-    private CompletionStage<Signal<?>> validateAliasSubjectModification(
-            final PolicyModifyCommand<?> command, final Label label) {
+    private CompletionStage<Signal<?>> validateReferencesModification(
+            final ModifyPolicyEntryReferences command) {
 
         final PolicyId importingPolicyId = command.getEntityId();
+        final List<EntryReference> references = command.getReferences();
+        final DittoHeaders dittoHeaders = command.getDittoHeaders();
 
+        // Filter to only import references (local references need no pre-enforcement validation)
+        final List<EntryReference> importReferences = references.stream()
+                .filter(EntryReference::isImportReference)
+                .collect(Collectors.toList());
+
+        if (importReferences.isEmpty()) {
+            return CompletableFuture.completedFuture(command);
+        }
+
+        // Load the importing policy to verify each referenced import exists
         return policyEnforcerProvider.getPolicyEnforcer(importingPolicyId)
                 .thenCompose(importingEnforcerOpt -> {
                     final Optional<Policy> importingPolicyOpt = importingEnforcerOpt
                             .flatMap(PolicyEnforcer::getPolicy);
 
-                    if (importingPolicyOpt.isEmpty()) {
-                        // Cannot resolve importing policy — let downstream handle it
-                        return CompletableFuture.completedFuture((Signal<?>) command);
+                    // If the importing policy is not in cache, skip the import-exists check.
+                    // The persistence actor applies the command against its authoritative state.
+                    if (importingPolicyOpt.isPresent()) {
+                        final Policy importingPolicy = importingPolicyOpt.get();
+                        for (final EntryReference ref : importReferences) {
+                            final PolicyId referencedPolicyId = ref.getImportedPolicyId().orElseThrow();
+                            final boolean importExists = importingPolicy.getPolicyImports().stream()
+                                    .anyMatch(imp -> imp.getImportedPolicyId().equals(referencedPolicyId));
+                            if (!importExists) {
+                                throw PolicyImportInvalidException.newBuilder()
+                                        .message("A reference points to policy '" + referencedPolicyId +
+                                                "' which is not in this policy's imports.")
+                                        .description("Add an import for policy '" + referencedPolicyId +
+                                                "' before referencing its entries.")
+                                        .dittoHeaders(dittoHeaders)
+                                        .build();
+                            }
+                        }
                     }
 
-                    final Policy importingPolicy = importingPolicyOpt.get();
-                    final Optional<ImportsAlias> aliasOpt =
-                            importingPolicy.getImportsAliases().getAlias(label);
-
-                    if (aliasOpt.isEmpty()) {
-                        // Not an alias — pass through
-                        return CompletableFuture.completedFuture((Signal<?>) command);
-                    }
-
-                    return validateAliasTargetsAllowSubjects(
-                            aliasOpt.get().getTargets(), command);
+                    // Validate each import reference against its imported policy
+                    return importReferences.stream()
+                            .map(ref -> {
+                                final PolicyId referencedPolicyId = ref.getImportedPolicyId().orElseThrow();
+                                final Label referencedEntryLabel = ref.getEntryLabel();
+                                return getPolicyEnforcer(referencedPolicyId, dittoHeaders)
+                                        .thenApply(importedEnforcer -> {
+                                            final Policy importedPolicy = importedEnforcer.getPolicy()
+                                                    .orElseThrow(policyNotAccessible(referencedPolicyId,
+                                                            dittoHeaders));
+                                            final Optional<PolicyEntry> entryOpt =
+                                                    importedPolicy.getEntryFor(referencedEntryLabel);
+                                            if (entryOpt.isEmpty()) {
+                                                throw PolicyImportInvalidException.newBuilder()
+                                                        .message("A reference targets entry '" +
+                                                                referencedEntryLabel + "' of policy '" +
+                                                                referencedPolicyId +
+                                                                "' which does not exist.")
+                                                        .dittoHeaders(dittoHeaders)
+                                                        .build();
+                                            }
+                                            final PolicyEntry referencedEntry = entryOpt.get();
+                                            if (referencedEntry.getImportableType() == ImportableType.NEVER) {
+                                                throw PolicyImportInvalidException.newBuilder()
+                                                        .message("A reference targets entry '" +
+                                                                referencedEntryLabel + "' of policy '" +
+                                                                referencedPolicyId +
+                                                                "' which is marked as importable='never'.")
+                                                        .dittoHeaders(dittoHeaders)
+                                                        .build();
+                                            }
+                                            // Verify READ access on the referenced entry
+                                            final ResourceKey resourceKey = ResourceKey.newInstance(
+                                                    POLICY_RESOURCE,
+                                                    ENTRIES_PREFIX + referencedEntryLabel);
+                                            final AuthorizationContext authCtx =
+                                                    dittoHeaders.getAuthorizationContext();
+                                            if (!importedEnforcer.getEnforcer().hasUnrestrictedPermissions(
+                                                    Set.of(resourceKey), authCtx, Permission.READ)) {
+                                                throw PolicyNotAccessibleException.newBuilder(
+                                                        referencedPolicyId)
+                                                        .description(
+                                                                "Insufficient permissions to reference entry '" +
+                                                                        referencedEntryLabel +
+                                                                        "' of policy '" +
+                                                                        referencedPolicyId + "'.")
+                                                        .dittoHeaders(dittoHeaders)
+                                                        .build();
+                                            }
+                                            return true;
+                                        });
+                            })
+                            .reduce(CompletableFuture.completedFuture(true),
+                                    (s1, s2) -> s1.thenCombine(s2, (b1, b2) -> b1 && b2))
+                            .thenApply(ignored -> command);
                 });
-    }
-
-    /**
-     * For each alias target, loads the imported policy and verifies that the target entry permits subject additions
-     * via {@code allowedImportAdditions}.
-     */
-    private CompletionStage<Signal<?>> validateAliasTargetsAllowSubjects(
-            final List<ImportsAliasTarget> targets, final PolicyModifyCommand<?> command) {
-
-        final DittoHeaders dittoHeaders = command.getDittoHeaders();
-
-        return targets.stream()
-                .map(target -> {
-                    final PolicyId importedPolicyId = target.getImportedPolicyId();
-                    final Label entryLabel = target.getEntryLabel();
-                    return getPolicyEnforcer(importedPolicyId, dittoHeaders)
-                            .thenApply(importedEnforcer -> {
-                                final Policy importedPolicy = importedEnforcer.getPolicy()
-                                        .orElseThrow(policyNotAccessible(importedPolicyId, dittoHeaders));
-
-                                final Optional<PolicyEntry> entryOpt =
-                                        importedPolicy.getEntryFor(entryLabel);
-                                if (entryOpt.isEmpty()) {
-                                    throw PolicyImportInvalidException.newBuilder()
-                                            .message("The imports alias targets entry '" +
-                                                    entryLabel + "' of imported policy '" +
-                                                    importedPolicyId +
-                                                    "' which does not exist.")
-                                            .description("The imported policy '" +
-                                                    importedPolicyId +
-                                                    "' does not contain an entry with label '" +
-                                                    entryLabel + "'.")
-                                            .dittoHeaders(dittoHeaders)
-                                            .build();
-                                }
-                                final Set<AllowedImportAddition> allowed = entryOpt.get()
-                                        .getAllowedImportAdditions()
-                                        .orElse(Collections.emptySet());
-
-                                if (!allowed.contains(AllowedImportAddition.SUBJECTS)) {
-                                    throw PolicyImportInvalidException.newBuilder()
-                                            .message("The imports alias targets entry '" +
-                                                    entryLabel + "' of imported policy '" +
-                                                    importedPolicyId +
-                                                    "' which does not allow subject additions.")
-                                            .description("The imported policy entry '" +
-                                                    entryLabel + "' does not allow " +
-                                                    "subject additions. Its " +
-                                                    "'allowedImportAdditions' is: " + allowed)
-                                            .dittoHeaders(dittoHeaders)
-                                            .build();
-                                }
-                                return true;
-                            });
-                })
-                .reduce(CompletableFuture.completedFuture(true),
-                        (s1, s2) -> s1.thenCombine(s2, (b1, b2) -> b1 && b2))
-                .thenApply(ignored -> command);
-    }
-
-    /**
-     * Validates that a single {@link ModifyPolicyImportEntryAddition} is permitted by the imported policy's
-     * {@code allowedImportAdditions}.
-     */
-    private CompletionStage<Signal<?>> validateEntryAdditionAgainstImportedPolicy(
-            final ModifyPolicyImportEntryAddition command) {
-
-        final PolicyId importedPolicyId = command.getImportedPolicyId();
-        final DittoHeaders dittoHeaders = command.getDittoHeaders();
-
-        return getPolicyEnforcer(importedPolicyId, dittoHeaders)
-                .thenApply(importedEnforcer -> {
-                    final Policy importedPolicy = importedEnforcer.getPolicy()
-                            .orElseThrow(policyNotAccessible(importedPolicyId, dittoHeaders));
-
-                    validateSingleEntryAdditionAllowed(
-                            command.getEntryAddition(), importedPolicyId, importedPolicy, dittoHeaders);
-                    return (Signal<?>) command;
-                });
-    }
-
-    /**
-     * Validates that a {@link ModifyPolicyImportEntriesAdditions} is permitted by the imported policy's
-     * {@code allowedImportAdditions}.
-     */
-    private CompletionStage<Signal<?>> validateEntriesAdditionsAgainstImportedPolicy(
-            final ModifyPolicyImportEntriesAdditions command) {
-
-        final PolicyId importedPolicyId = command.getImportedPolicyId();
-        final DittoHeaders dittoHeaders = command.getDittoHeaders();
-
-        return getPolicyEnforcer(importedPolicyId, dittoHeaders)
-                .thenApply(importedEnforcer -> {
-                    final Policy importedPolicy = importedEnforcer.getPolicy()
-                            .orElseThrow(policyNotAccessible(importedPolicyId, dittoHeaders));
-
-                    for (final EntryAddition addition : command.getEntriesAdditions()) {
-                        validateSingleEntryAdditionAllowed(
-                                addition, importedPolicyId, importedPolicy, dittoHeaders);
-                    }
-                    return (Signal<?>) command;
-                });
-    }
-
-    /**
-     * Validates that a single {@link EntryAddition} is permitted by the imported policy entry's
-     * {@code allowedImportAdditions}. Rejects if the entry does not exist in the imported policy.
-     */
-    private static void validateSingleEntryAdditionAllowed(final EntryAddition entryAddition,
-            final PolicyId importedPolicyId, final Policy importedPolicy, final DittoHeaders dittoHeaders) {
-
-        final Label label = entryAddition.getLabel();
-        final Optional<PolicyEntry> entryOpt = importedPolicy.getEntryFor(label);
-        if (entryOpt.isEmpty()) {
-            throw PolicyImportInvalidException.newBuilder()
-                    .message("The imported policy '" + importedPolicyId +
-                            "' does not contain entry '" + label + "'.")
-                    .description("The entry '" + label +
-                            "' must exist in the imported policy to accept additions.")
-                    .dittoHeaders(dittoHeaders)
-                    .build();
-        }
-        final Set<AllowedImportAddition> allowed = entryOpt.get().getAllowedImportAdditions()
-                .orElse(Collections.emptySet());
-        if (entryAddition.getSubjects().isPresent() &&
-                !allowed.contains(AllowedImportAddition.SUBJECTS)) {
-            throw PolicyImportInvalidException.newBuilder()
-                    .message("The policy import for '" + importedPolicyId +
-                            "' contains disallowed subject additions for entry '" + label + "'.")
-                    .description("The imported policy entry '" + label +
-                            "' does not allow subject additions. Its 'allowedImportAdditions' is: " + allowed)
-                    .dittoHeaders(dittoHeaders)
-                    .build();
-        }
-        if (entryAddition.getResources().isPresent() &&
-                !allowed.contains(AllowedImportAddition.RESOURCES)) {
-            throw PolicyImportInvalidException.newBuilder()
-                    .message("The policy import for '" + importedPolicyId +
-                            "' contains disallowed resource additions for entry '" + label + "'.")
-                    .description("The imported policy entry '" + label +
-                            "' does not allow resource additions. Its 'allowedImportAdditions' is: " + allowed)
-                    .dittoHeaders(dittoHeaders)
-                    .build();
-        }
-        if (entryAddition.getNamespaces().isPresent() &&
-                !allowed.contains(AllowedImportAddition.NAMESPACES)) {
-            throw PolicyImportInvalidException.newBuilder()
-                    .message("The policy import for '" + importedPolicyId +
-                            "' contains disallowed namespace additions for entry '" + label + "'.")
-                    .description("The imported policy entry '" + label +
-                            "' does not allow namespace additions. Its 'allowedImportAdditions' is: " + allowed)
-                    .dittoHeaders(dittoHeaders)
-                    .build();
-        }
     }
 
     private static DittoRuntimeException errorForPolicyModifyCommand(final PolicyImport policyImport) {

@@ -44,8 +44,8 @@ final class ImmutablePolicyBuilder implements PolicyBuilder {
     private final Map<Label, List<String>> namespaces;
     private final Map<Label, ImportableType> importableTypes;
     private final Map<Label, Set<AllowedImportAddition>> allowedImportAdditions;
+    private final Map<Label, List<EntryReference>> entryReferences;
     private PolicyImports policyImports;
-    private ImportsAliases importsAliases;
     @Nullable private PolicyId id;
     @Nullable private PolicyLifecycle lifecycle;
     @Nullable private PolicyRevision revision;
@@ -60,8 +60,8 @@ final class ImmutablePolicyBuilder implements PolicyBuilder {
         namespaces = new LinkedHashMap<>();
         importableTypes = new LinkedHashMap<>();
         allowedImportAdditions = new LinkedHashMap<>();
+        entryReferences = new LinkedHashMap<>();
         policyImports = PolicyImports.emptyInstance();
-        importsAliases = ImportsAliases.emptyInstance();
         id = null;
         lifecycle = null;
         revision = null;
@@ -128,8 +128,7 @@ final class ImmutablePolicyBuilder implements PolicyBuilder {
                 .setLifecycle(existingPolicy.getLifecycle().orElse(null))
                 .setRevision(existingPolicy.getRevision().orElse(null))
                 .setModified(existingPolicy.getModified().orElse(null))
-                .setPolicyImports(existingPolicy.getPolicyImports())
-                .setImportsAliases(existingPolicy.getImportsAliases());
+                .setPolicyImports(existingPolicy.getPolicyImports());
 
         existingPolicy.getEntityId().ifPresent(result::setId);
         existingPolicy.forEach(result::set);
@@ -185,27 +184,6 @@ final class ImmutablePolicyBuilder implements PolicyBuilder {
     }
 
     @Override
-    public ImmutablePolicyBuilder setImportsAliases(final ImportsAliases importsAliases) {
-        checkNotNull(importsAliases, "importsAliases");
-        this.importsAliases = importsAliases;
-        return this;
-    }
-
-    @Override
-    public ImmutablePolicyBuilder setImportsAlias(final ImportsAlias importsAlias) {
-        checkNotNull(importsAlias, "importsAlias");
-        this.importsAliases = this.importsAliases.setAlias(importsAlias);
-        return this;
-    }
-
-    @Override
-    public ImmutablePolicyBuilder removeImportsAlias(final Label label) {
-        checkNotNull(label, "label");
-        this.importsAliases = this.importsAliases.removeAlias(label);
-        return this;
-    }
-
-    @Override
     public ImmutablePolicyBuilder setCreated(@Nullable final Instant created) {
         this.created = created;
         return this;
@@ -234,6 +212,10 @@ final class ImmutablePolicyBuilder implements PolicyBuilder {
         namespaces.put(label, entry.getNamespaces().orElse(null));
         setImportableFor(label, entry.getImportableType());
         allowedImportAdditions.put(label, entry.getAllowedImportAdditions().orElse(null));
+        final List<EntryReference> refs = entry.getReferences();
+        if (!refs.isEmpty()) {
+            entryReferences.put(label, refs);
+        }
     }
 
     private void putAllSubjects(final PolicyEntry policyEntry) {
@@ -265,6 +247,7 @@ final class ImmutablePolicyBuilder implements PolicyBuilder {
         namespaces.remove(label);
         importableTypes.remove(label);
         allowedImportAdditions.remove(label);
+        entryReferences.remove(label);
     }
 
     @Override
@@ -353,6 +336,14 @@ final class ImmutablePolicyBuilder implements PolicyBuilder {
         return this;
     }
 
+    @Override
+    public ImmutablePolicyBuilder setReferencesFor(final CharSequence label,
+            final List<EntryReference> references) {
+        checkNotNull(references, "references");
+        entryReferences.put(Label.of(label), references);
+        return this;
+    }
+
     private Map<ResourceKey, Permissions> retrieveGrantedPermissions(final CharSequence label) {
         return getPermissions(label, grantedPermissions);
     }
@@ -432,12 +423,12 @@ final class ImmutablePolicyBuilder implements PolicyBuilder {
                             getImportableType(lbl).orElse(ImportableType.IMPLICIT);
                     return PoliciesModelFactory.newPolicyEntry(lbl, getSubjectsForLabel(lbl),
                             getResourcesForLabel(lbl), getNamespaces(lbl).orElse(null),
-                            importableType, getAllowedImportAdditions(lbl).orElse(null));
+                            importableType, getAllowedImportAdditions(lbl).orElse(null),
+                            getEntryReferences(lbl));
                 })
                 .collect(Collectors.toList());
 
-        return ImmutablePolicy.of(id, lifecycle, revision, modified, created, metadata, policyImports, policyEntries,
-                importsAliases);
+        return ImmutablePolicy.of(id, lifecycle, revision, modified, created, metadata, policyImports, policyEntries);
     }
 
     private Collection<Label> getAllLabels() {
@@ -461,6 +452,11 @@ final class ImmutablePolicyBuilder implements PolicyBuilder {
 
     private Optional<List<String>> getNamespaces(final CharSequence label) {
         return Optional.ofNullable(namespaces.get(Label.of(label)));
+    }
+
+    @Nullable
+    private List<EntryReference> getEntryReferences(final CharSequence label) {
+        return entryReferences.get(Label.of(label));
     }
 
     private Resources getResourcesForLabel(final CharSequence label) {

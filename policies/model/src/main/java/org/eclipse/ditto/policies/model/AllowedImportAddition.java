@@ -19,7 +19,7 @@ import java.util.Optional;
 
 /**
  * Determines which types of additions are allowed when a policy entry is imported by other policies
- * via {@code entriesAdditions}.
+ * via {@code references}.
  *
  * @since 3.9.0
  */

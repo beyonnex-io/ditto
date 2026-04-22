@@ -15,7 +15,7 @@ get:
     `policyId` path parameter and the `label` path parameter.
 
     Allowed import additions control which types of additions (subjects, resources) are permitted
-    when this entry is imported by other policies via `entriesAdditions`.
+    when this entry is referenced by other entries via `references`.
   tags:
     - Policies
   parameters:
@@ -73,7 +73,7 @@ put:
     `policyId` path parameter and the `label` path parameter.
 
     Allowed import additions control which types of additions (subjects, resources) are permitted
-    when this entry is imported by other policies via `entriesAdditions`. Setting an empty array
+    when this entry is referenced by other entries via `references`. Setting an empty array
     disables all additions for this entry.
   tags:
     - Policies

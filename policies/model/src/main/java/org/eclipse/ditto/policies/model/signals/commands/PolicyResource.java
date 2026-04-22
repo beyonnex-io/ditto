@@ -34,8 +34,6 @@ public enum PolicyResource {
     POLICY_IMPORTS,
     POLICY_IMPORT,
     POLICY_IMPORT_ENTRIES,
-    POLICY_IMPORT_ENTRIES_ADDITIONS,
-    POLICY_IMPORT_ENTRY_ADDITION,
     POLICY_IMPORT_TRANSITIVE_IMPORTS,
     POLICY_ENTRIES,
     POLICY_ENTRY,
@@ -46,8 +44,7 @@ public enum PolicyResource {
     POLICY_ENTRY_IMPORTABLE,
     POLICY_ENTRY_ALLOWED_IMPORT_ADDITIONS,
     POLICY_ENTRY_NAMESPACES,
-    POLICY_IMPORTS_ALIASES,
-    POLICY_IMPORTS_ALIAS;
+    POLICY_ENTRY_REFERENCES;
 
     private static final ResourceMap<PolicyResource> resources;
 
@@ -56,15 +53,10 @@ public enum PolicyResource {
                 .add(Policy.JsonFields.IMPORTS, ResourceMap.newBuilder(POLICY_IMPORTS)
                         .addOne(ResourceMap.newBuilder(POLICY_IMPORT)
                                 .add(EffectedImports.JsonFields.ENTRIES, POLICY_IMPORT_ENTRIES)
-                                .add(EffectedImports.JsonFields.ENTRIES_ADDITIONS,
-                                        ResourceMap.newBuilder(POLICY_IMPORT_ENTRIES_ADDITIONS)
-                                                .addOne(POLICY_IMPORT_ENTRY_ADDITION))
                                 .add(EffectedImports.JsonFields.TRANSITIVE_IMPORTS,
                                         POLICY_IMPORT_TRANSITIVE_IMPORTS)
                                 .end())
                 )
-                .add(Policy.JsonFields.IMPORTS_ALIASES, ResourceMap.newBuilder(POLICY_IMPORTS_ALIASES)
-                        .addOne(POLICY_IMPORTS_ALIAS))
                 .add(Policy.JsonFields.ENTRIES, ResourceMap.newBuilder(POLICY_ENTRIES)
                         .addOne(ResourceMap.newBuilder(POLICY_ENTRY)
                                 .add(PolicyEntry.JsonFields.RESOURCES,
@@ -76,6 +68,8 @@ public enum PolicyResource {
                                         POLICY_ENTRY_ALLOWED_IMPORT_ADDITIONS)
                                 .add(PolicyEntry.JsonFields.NAMESPACES,
                                         POLICY_ENTRY_NAMESPACES)
+                                .add(PolicyEntry.JsonFields.REFERENCES,
+                                        POLICY_ENTRY_REFERENCES)
                                 .end())
                 ).end();
     }

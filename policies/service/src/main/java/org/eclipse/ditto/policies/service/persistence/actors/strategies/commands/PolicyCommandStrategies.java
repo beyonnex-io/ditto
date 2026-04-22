@@ -75,6 +75,11 @@ public final class PolicyCommandStrategies
         addStrategy(new RetrievePolicyEntryNamespacesStrategy(policyConfig));
         addStrategy(new ModifyPolicyEntryNamespacesStrategy(policyConfig));
 
+        // Policy Entry References
+        addStrategy(new RetrievePolicyEntryReferencesStrategy(policyConfig));
+        addStrategy(new ModifyPolicyEntryReferencesStrategy(policyConfig));
+        addStrategy(new DeletePolicyEntryReferencesStrategy(policyConfig));
+
         // Policy Entry Importable
         addStrategy(new RetrievePolicyEntryImportableStrategy(policyConfig));
         addStrategy(new ModifyPolicyEntryImportableStrategy(policyConfig));
@@ -83,24 +88,9 @@ public final class PolicyCommandStrategies
         addStrategy(new RetrievePolicyImportEntriesStrategy(policyConfig));
         addStrategy(new ModifyPolicyImportEntriesStrategy(policyConfig));
 
-        // Policy Import Entries Additions
-        addStrategy(new RetrievePolicyImportEntriesAdditionsStrategy(policyConfig));
-        addStrategy(new ModifyPolicyImportEntriesAdditionsStrategy(policyConfig));
-        addStrategy(new RetrievePolicyImportEntryAdditionStrategy(policyConfig));
-        addStrategy(new ModifyPolicyImportEntryAdditionStrategy(policyConfig));
-        addStrategy(new DeletePolicyImportEntryAdditionStrategy(policyConfig));
-
         // Policy Import Resolve Transitively
         addStrategy(new RetrievePolicyImportTransitiveImportsStrategy(policyConfig));
         addStrategy(new ModifyPolicyImportTransitiveImportsStrategy(policyConfig));
-
-        // Subject Aliases
-        addStrategy(new RetrieveImportsAliasesStrategy(policyConfig));
-        addStrategy(new ModifyImportsAliasesStrategy(policyConfig));
-        addStrategy(new DeleteImportsAliasesStrategy(policyConfig));
-        addStrategy(new RetrieveImportsAliasStrategy(policyConfig));
-        addStrategy(new ModifyImportsAliasStrategy(policyConfig));
-        addStrategy(new DeleteImportsAliasStrategy(policyConfig));
 
         // Subjects
         addStrategy(new ModifySubjectsStrategy(policyConfig));
