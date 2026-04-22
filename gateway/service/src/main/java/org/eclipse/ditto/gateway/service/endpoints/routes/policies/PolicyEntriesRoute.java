@@ -488,10 +488,7 @@ final class PolicyEntriesRoute extends AbstractRoute {
 
     private static List<EntryReference> parseReferences(final String jsonString) {
         final JsonArray jsonArray = wrapJsonRuntimeException(() -> JsonFactory.newArray(jsonString));
-        return jsonArray.stream()
-                .filter(JsonValue::isObject)
-                .map(value -> PoliciesModelFactory.newEntryReference(value.asObject()))
-                .collect(Collectors.toList());
+        return PoliciesModelFactory.parseEntryReferences(jsonArray);
     }
 
     /*

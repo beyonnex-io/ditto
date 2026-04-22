@@ -29,6 +29,7 @@ import org.eclipse.ditto.internal.utils.persistentactors.results.ResultFactory;
 import org.eclipse.ditto.policies.model.EntryReference;
 import org.eclipse.ditto.policies.model.Label;
 import org.eclipse.ditto.policies.model.Policy;
+import org.eclipse.ditto.policies.model.PolicyEntry;
 import org.eclipse.ditto.policies.model.PolicyId;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyEntryReferences;
 import org.eclipse.ditto.policies.model.signals.commands.modify.ModifyPolicyEntryReferencesResponse;
@@ -66,17 +67,27 @@ final class ModifyPolicyEntryReferencesStrategy
         }
 
         // Validate references
+        final java.util.Set<String> seenRefs = new java.util.LinkedHashSet<>();
         for (final EntryReference ref : references) {
+            final String refKey = ref.getImportedPolicyId().map(id -> id + ":").orElse("") +
+                    ref.getEntryLabel();
+            if (!seenRefs.add(refKey)) {
+                return ResultFactory.newErrorResult(
+                        policyEntryReferenceInvalid(policyId, label,
+                                "Duplicate reference to entry '" + ref.getEntryLabel() + "'.",
+                                dittoHeaders),
+                        command);
+            }
             if (ref.isLocalReference() && ref.getEntryLabel().equals(label)) {
                 return ResultFactory.newErrorResult(
-                        policyEntryInvalid(policyId, label,
+                        policyEntryReferenceInvalid(policyId, label,
                                 "Entry must not reference itself.",
                                 dittoHeaders),
                         command);
             }
             if (ref.isLocalReference() && nonNullPolicy.getEntryFor(ref.getEntryLabel()).isEmpty()) {
                 return ResultFactory.newErrorResult(
-                        policyEntryInvalid(policyId, label,
+                        policyEntryReferenceInvalid(policyId, label,
                                 "Local reference targets entry '" + ref.getEntryLabel() +
                                         "' which does not exist in the policy.",
                                 dittoHeaders),
@@ -97,12 +108,17 @@ final class ModifyPolicyEntryReferencesStrategy
     @Override
     public Optional<EntityTag> previousEntityTag(final ModifyPolicyEntryReferences command,
             @Nullable final Policy previousEntity) {
-        return Optional.empty();
+        return Optional.ofNullable(previousEntity)
+                .flatMap(p -> p.getEntryFor(command.getLabel()))
+                .map(PolicyEntry::getReferences)
+                .filter(refs -> !refs.isEmpty())
+                .flatMap(EntityTag::fromEntity);
     }
 
     @Override
     public Optional<EntityTag> nextEntityTag(final ModifyPolicyEntryReferences command,
             @Nullable final Policy newEntity) {
-        return Optional.empty();
+        final List<EntryReference> refs = command.getReferences();
+        return refs.isEmpty() ? Optional.empty() : EntityTag.fromEntity(refs);
     }
 }

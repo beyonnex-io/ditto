@@ -641,6 +641,32 @@ public final class PoliciesModelFactory {
     }
 
     /**
+     * Parses a {@link JsonArray} into a list of {@link EntryReference}s, validating that every element is a
+     * JSON object. Throws {@link PolicyEntryInvalidException} if any element is not an object.
+     *
+     * @param jsonArray the JSON array to parse.
+     * @return the list of parsed entry references.
+     * @throws PolicyEntryInvalidException if any element is not a JSON object.
+     * @since 3.9.0
+     */
+    public static List<EntryReference> parseEntryReferences(final JsonArray jsonArray) {
+        final List<EntryReference> result = new ArrayList<>(jsonArray.getSize());
+        int index = 0;
+        for (final JsonValue element : jsonArray) {
+            if (!element.isObject()) {
+                throw PolicyEntryInvalidException.newBuilder()
+                        .description("The 'references' array contains a non-object element at index " + index +
+                                ": " + element + ". Every element must be a JSON object with at least an " +
+                                "'entry' field.")
+                        .build();
+            }
+            result.add(ImmutableEntryReference.fromJson(element.asObject()));
+            index++;
+        }
+        return result;
+    }
+
+    /**
      * Returns a new immutable {@link PolicyEntry} based on the given JSON object.
      *
      * @param label the Label for the PolicyEntry to create.

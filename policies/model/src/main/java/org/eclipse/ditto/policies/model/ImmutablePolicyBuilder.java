@@ -212,10 +212,7 @@ final class ImmutablePolicyBuilder implements PolicyBuilder {
         namespaces.put(label, entry.getNamespaces().orElse(null));
         setImportableFor(label, entry.getImportableType());
         allowedImportAdditions.put(label, entry.getAllowedImportAdditions().orElse(null));
-        final List<EntryReference> refs = entry.getReferences();
-        if (!refs.isEmpty()) {
-            entryReferences.put(label, refs);
-        }
+        entryReferences.put(label, entry.getReferences());
     }
 
     private void putAllSubjects(final PolicyEntry policyEntry) {

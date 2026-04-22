@@ -264,11 +264,7 @@ final class ImmutablePolicyEntry implements PolicyEntry {
     @Nullable
     private static List<EntryReference> readReferences(final JsonObject json) {
         return json.getValue(JsonFields.REFERENCES)
-                .map(array -> array.stream()
-                        .filter(JsonValue::isObject)
-                        .map(JsonValue::asObject)
-                        .map(ImmutableEntryReference::fromJson)
-                        .collect(Collectors.toList()))
+                .map(PoliciesModelFactory::parseEntryReferences)
                 .orElse(null);
     }
 

@@ -365,11 +365,7 @@ abstract class AbstractPolicyMappingStrategies<T extends Jsonifiable.WithPredica
         final JsonValue value = adaptable.getPayload().getValue()
                 .orElseThrow(() -> new NullPointerException("Payload value must not be null."));
         final JsonArray jsonArray = value.isArray() ? value.asArray() : JsonArray.empty();
-        return jsonArray.stream()
-                .filter(JsonValue::isObject)
-                .map(JsonValue::asObject)
-                .map(PoliciesModelFactory::newEntryReference)
-                .collect(Collectors.toList());
+        return PoliciesModelFactory.parseEntryReferences(jsonArray);
     }
 
     /**

@@ -27,6 +27,7 @@ import org.eclipse.ditto.internal.utils.persistentactors.results.Result;
 import org.eclipse.ditto.internal.utils.persistentactors.results.ResultFactory;
 import org.eclipse.ditto.policies.model.Label;
 import org.eclipse.ditto.policies.model.Policy;
+import org.eclipse.ditto.policies.model.PolicyEntry;
 import org.eclipse.ditto.policies.model.PolicyId;
 import org.eclipse.ditto.policies.model.signals.commands.modify.DeletePolicyEntryReferences;
 import org.eclipse.ditto.policies.model.signals.commands.modify.DeletePolicyEntryReferencesResponse;
@@ -75,7 +76,11 @@ final class DeletePolicyEntryReferencesStrategy
     @Override
     public Optional<EntityTag> previousEntityTag(final DeletePolicyEntryReferences command,
             @Nullable final Policy previousEntity) {
-        return Optional.empty();
+        return Optional.ofNullable(previousEntity)
+                .flatMap(p -> p.getEntryFor(command.getLabel()))
+                .map(PolicyEntry::getReferences)
+                .filter(refs -> !refs.isEmpty())
+                .flatMap(EntityTag::fromEntity);
     }
 
     @Override

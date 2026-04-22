@@ -476,7 +476,18 @@ public interface Policy extends Iterable<PolicyEntry>, Entity<PolicyRevision> {
                         return self.toBuilder().setAll(resolved).build();
                     });
         } else {
-            result = CompletableFuture.completedFuture(this);
+            // Even without imports, local references between entries must be resolved
+            final boolean hasReferences = java.util.stream.StreamSupport
+                    .stream(this.spliterator(), false)
+                    .anyMatch(entry -> !entry.getReferences().isEmpty());
+            if (hasReferences) {
+                final Set<PolicyEntry> resolved =
+                        PolicyImporter.resolveReferences(this, this.getEntriesSet());
+                result = CompletableFuture.completedFuture(
+                        this.toBuilder().setAll(resolved).build());
+            } else {
+                result = CompletableFuture.completedFuture(this);
+            }
         }
         return result;
     }

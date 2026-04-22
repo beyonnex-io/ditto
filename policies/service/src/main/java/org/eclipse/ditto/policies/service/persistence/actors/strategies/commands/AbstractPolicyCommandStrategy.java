@@ -48,6 +48,7 @@ import org.eclipse.ditto.policies.model.SubjectAnnouncement;
 import org.eclipse.ditto.policies.model.SubjectExpiry;
 import org.eclipse.ditto.policies.model.SubjectExpiryInvalidException;
 import org.eclipse.ditto.policies.model.Subjects;
+import org.eclipse.ditto.policies.model.PolicyEntryInvalidException;
 import org.eclipse.ditto.policies.model.signals.commands.PolicyCommand;
 import org.eclipse.ditto.policies.model.signals.commands.exceptions.PolicyEntryModificationInvalidException;
 import org.eclipse.ditto.policies.model.signals.commands.exceptions.PolicyEntryNotAccessibleException;
@@ -407,17 +408,27 @@ abstract class AbstractPolicyCommandStrategy<C extends Command<C>, E extends Pol
                 .collect(Collectors.toSet());
 
         for (final PolicyEntry entry : entries) {
+            final Set<String> seenRefs = new LinkedHashSet<>();
             for (final EntryReference ref : entry.getReferences()) {
+                final String refKey = ref.getImportedPolicyId().map(id -> id + ":").orElse("") +
+                        ref.getEntryLabel();
+                if (!seenRefs.add(refKey)) {
+                    return Optional.of(ResultFactory.newErrorResult(
+                            policyEntryReferenceInvalid(policyId, entry.getLabel(),
+                                    "Duplicate reference to entry '" + ref.getEntryLabel() + "'.",
+                                    dittoHeaders),
+                            command));
+                }
                 if (ref.isLocalReference() && ref.getEntryLabel().equals(entry.getLabel())) {
                     return Optional.of(ResultFactory.newErrorResult(
-                            policyEntryInvalid(policyId, entry.getLabel(),
+                            policyEntryReferenceInvalid(policyId, entry.getLabel(),
                                     "Entry must not reference itself.",
                                     dittoHeaders),
                             command));
                 }
                 if (ref.isLocalReference() && !entryLabels.contains(ref.getEntryLabel())) {
                     return Optional.of(ResultFactory.newErrorResult(
-                            policyEntryInvalid(policyId, entry.getLabel(),
+                            policyEntryReferenceInvalid(policyId, entry.getLabel(),
                                     "Local reference targets entry '" + ref.getEntryLabel() +
                                             "' which does not exist in the policy.",
                                     dittoHeaders),
@@ -427,7 +438,7 @@ abstract class AbstractPolicyCommandStrategy<C extends Command<C>, E extends Pol
                     final PolicyId refImport = ref.getImportedPolicyId().orElseThrow();
                     if (!importIds.contains(refImport)) {
                         return Optional.of(ResultFactory.newErrorResult(
-                                policyEntryInvalid(policyId, entry.getLabel(),
+                                policyEntryReferenceInvalid(policyId, entry.getLabel(),
                                         "Import reference targets policy '" + refImport +
                                                 "' which is not declared in imports.",
                                         dittoHeaders),
@@ -486,6 +497,15 @@ abstract class AbstractPolicyCommandStrategy<C extends Command<C>, E extends Pol
     static DittoRuntimeException policyEntryInvalid(final PolicyId policyId, final Label label,
             @Nullable final String description, final DittoHeaders dittoHeaders) {
         return PolicyEntryModificationInvalidException.newBuilder(policyId, label)
+                .description(description)
+                .dittoHeaders(dittoHeaders)
+                .build();
+    }
+
+    static DittoRuntimeException policyEntryReferenceInvalid(final PolicyId policyId, final Label label,
+            final String description, final DittoHeaders dittoHeaders) {
+        return PolicyEntryInvalidException.newBuilder()
+                .message("The references of PolicyEntry '" + label + "' on Policy '" + policyId + "' are invalid.")
                 .description(description)
                 .dittoHeaders(dittoHeaders)
                 .build();

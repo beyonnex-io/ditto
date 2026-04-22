@@ -70,6 +70,10 @@ final class RetrievePolicyEntryReferencesStrategy
     @Override
     public Optional<EntityTag> nextEntityTag(final RetrievePolicyEntryReferences command,
             @Nullable final Policy newEntity) {
-        return Optional.empty();
+        return Optional.ofNullable(newEntity)
+                .flatMap(p -> p.getEntryFor(command.getLabel()))
+                .map(PolicyEntry::getReferences)
+                .filter(refs -> !refs.isEmpty())
+                .flatMap(EntityTag::fromEntity);
     }
 }

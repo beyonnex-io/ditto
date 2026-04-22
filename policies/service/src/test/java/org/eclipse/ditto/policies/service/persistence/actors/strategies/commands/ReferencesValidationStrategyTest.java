@@ -31,7 +31,7 @@ import org.eclipse.ditto.policies.model.PolicyImport;
 import org.eclipse.ditto.policies.model.PolicyImports;
 import org.eclipse.ditto.policies.model.Subject;
 import org.eclipse.ditto.policies.model.SubjectIssuer;
-import org.eclipse.ditto.policies.model.signals.commands.exceptions.PolicyEntryModificationInvalidException;
+import org.eclipse.ditto.policies.model.PolicyEntryInvalidException;
 import org.eclipse.ditto.policies.model.signals.commands.exceptions.PolicyEntryReferenceConflictException;
 import org.eclipse.ditto.policies.model.signals.commands.exceptions.PolicyImportReferenceConflictException;
 import org.eclipse.ditto.policies.model.signals.commands.modify.CreatePolicy;
@@ -185,7 +185,8 @@ public final class ReferencesValidationStrategyTest extends AbstractPolicyComman
                 HEADERS);
 
         assertErrorResult(modifyPolicyEntryReferencesStrategy, policy, command,
-                PolicyEntryModificationInvalidException.newBuilder(POLICY_ID, Label.of("reactor-op"))
+                PolicyEntryInvalidException.newBuilder()
+                        .message("The references of PolicyEntry 'reactor-op' on Policy '" + POLICY_ID + "' are invalid.")
                         .description("Local reference targets entry 'nonexistent' which does not exist in the policy.")
                         .build());
     }
@@ -213,7 +214,8 @@ public final class ReferencesValidationStrategyTest extends AbstractPolicyComman
                 HEADERS);
 
         assertErrorResult(modifyPolicyEntryReferencesStrategy, policy, command,
-                PolicyEntryModificationInvalidException.newBuilder(POLICY_ID, Label.of("reactor-op"))
+                PolicyEntryInvalidException.newBuilder()
+                        .message("The references of PolicyEntry 'reactor-op' on Policy '" + POLICY_ID + "' are invalid.")
                         .description("Entry must not reference itself.")
                         .build());
     }
@@ -232,7 +234,8 @@ public final class ReferencesValidationStrategyTest extends AbstractPolicyComman
         final var command = CreatePolicy.of(policy, HEADERS);
 
         assertErrorResult(createPolicyStrategy, null, command,
-                PolicyEntryModificationInvalidException.newBuilder(POLICY_ID, Label.of("self-ref"))
+                PolicyEntryInvalidException.newBuilder()
+                        .message("The references of PolicyEntry 'self-ref' on Policy '" + POLICY_ID + "' are invalid.")
                         .description("Entry must not reference itself.")
                         .build());
     }
@@ -253,7 +256,8 @@ public final class ReferencesValidationStrategyTest extends AbstractPolicyComman
         final var command = CreatePolicy.of(policy, HEADERS);
 
         assertErrorResult(createPolicyStrategy, null, command,
-                PolicyEntryModificationInvalidException.newBuilder(POLICY_ID, Label.of("entry-with-ref"))
+                PolicyEntryInvalidException.newBuilder()
+                        .message("The references of PolicyEntry 'entry-with-ref' on Policy '" + POLICY_ID + "' are invalid.")
                         .description("Local reference targets entry 'nonexistent' which does not exist in the policy.")
                         .build());
     }
@@ -273,7 +277,8 @@ public final class ReferencesValidationStrategyTest extends AbstractPolicyComman
         final var command = CreatePolicy.of(policy, HEADERS);
 
         assertErrorResult(createPolicyStrategy, null, command,
-                PolicyEntryModificationInvalidException.newBuilder(POLICY_ID, Label.of("entry-with-ref"))
+                PolicyEntryInvalidException.newBuilder()
+                        .message("The references of PolicyEntry 'entry-with-ref' on Policy '" + POLICY_ID + "' are invalid.")
                         .description("Import reference targets policy 'com.acme:not-imported' which is not declared in imports.")
                         .build());
     }
@@ -295,7 +300,8 @@ public final class ReferencesValidationStrategyTest extends AbstractPolicyComman
         final var command = ModifyPolicy.of(POLICY_ID, replacement, HEADERS);
 
         assertErrorResult(modifyPolicyStrategy, existingPolicy, command,
-                PolicyEntryModificationInvalidException.newBuilder(POLICY_ID, Label.of("entry-with-ref"))
+                PolicyEntryInvalidException.newBuilder()
+                        .message("The references of PolicyEntry 'entry-with-ref' on Policy '" + POLICY_ID + "' are invalid.")
                         .description("Local reference targets entry 'nonexistent' which does not exist in the policy.")
                         .build());
     }
@@ -325,7 +331,8 @@ public final class ReferencesValidationStrategyTest extends AbstractPolicyComman
         final var command = ModifyPolicyEntries.of(POLICY_ID, entries, HEADERS);
 
         assertErrorResult(modifyPolicyEntriesStrategy, existingPolicy, command,
-                PolicyEntryModificationInvalidException.newBuilder(POLICY_ID, Label.of("entry-with-ref"))
+                PolicyEntryInvalidException.newBuilder()
+                        .message("The references of PolicyEntry 'entry-with-ref' on Policy '" + POLICY_ID + "' are invalid.")
                         .description("Local reference targets entry 'nonexistent' which does not exist in the policy.")
                         .build());
     }
@@ -347,7 +354,8 @@ public final class ReferencesValidationStrategyTest extends AbstractPolicyComman
         final var command = ModifyPolicyEntry.of(POLICY_ID, entryWithBadRef, HEADERS);
 
         assertErrorResult(modifyPolicyEntryStrategy, existingPolicy, command,
-                PolicyEntryModificationInvalidException.newBuilder(POLICY_ID, Label.of("new-entry"))
+                PolicyEntryInvalidException.newBuilder()
+                        .message("The references of PolicyEntry 'new-entry' on Policy '" + POLICY_ID + "' are invalid.")
                         .description("Local reference targets entry 'nonexistent' which does not exist in the policy.")
                         .build());
     }
@@ -368,7 +376,8 @@ public final class ReferencesValidationStrategyTest extends AbstractPolicyComman
         final var command = ModifyPolicyEntry.of(POLICY_ID, entryWithBadRef, HEADERS);
 
         assertErrorResult(modifyPolicyEntryStrategy, existingPolicy, command,
-                PolicyEntryModificationInvalidException.newBuilder(POLICY_ID, Label.of("new-entry"))
+                PolicyEntryInvalidException.newBuilder()
+                        .message("The references of PolicyEntry 'new-entry' on Policy '" + POLICY_ID + "' are invalid.")
                         .description("Import reference targets policy 'com.acme:not-imported' which is not declared in imports.")
                         .build());
     }

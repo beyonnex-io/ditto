@@ -153,11 +153,8 @@ public final class PolicyEntryReferencesModified
                     final PolicyId policyId = PolicyId.of(extractedPolicyId);
                     final Label label = Label.of(jsonObject.getValueOrThrow(JSON_LABEL));
                     final JsonArray referencesArray = jsonObject.getValueOrThrow(JSON_REFERENCES);
-                    final List<EntryReference> extractedReferences = referencesArray.stream()
-                            .filter(JsonValue::isObject)
-                            .map(JsonValue::asObject)
-                            .map(PoliciesModelFactory::newEntryReference)
-                            .collect(Collectors.toList());
+                    final List<EntryReference> extractedReferences =
+                            PoliciesModelFactory.parseEntryReferences(referencesArray);
 
                     return of(policyId, label, extractedReferences, revision, timestamp, dittoHeaders,
                             metadata);
@@ -193,11 +190,8 @@ public final class PolicyEntryReferencesModified
     @Override
     public PolicyEntryReferencesModified setEntity(final JsonValue entity) {
         final JsonArray referencesArray = entity.asArray();
-        final List<EntryReference> extractedReferences = referencesArray.stream()
-                .filter(JsonValue::isObject)
-                .map(JsonValue::asObject)
-                .map(PoliciesModelFactory::newEntryReference)
-                .collect(Collectors.toList());
+        final List<EntryReference> extractedReferences =
+                PoliciesModelFactory.parseEntryReferences(referencesArray);
         return of(getPolicyEntityId(), label, extractedReferences, getRevision(), getTimestamp().orElse(null),
                 getDittoHeaders(), getMetadata().orElse(null));
     }

@@ -198,11 +198,7 @@ public final class RetrievePolicyEntryReferencesResponse
      * @return the retrieved EntryReferences.
      */
     public List<EntryReference> getReferences() {
-        return references.stream()
-                .filter(JsonValue::isObject)
-                .map(JsonValue::asObject)
-                .map(PoliciesModelFactory::newEntryReference)
-                .collect(Collectors.toList());
+        return PoliciesModelFactory.parseEntryReferences(references);
     }
 
     @Override

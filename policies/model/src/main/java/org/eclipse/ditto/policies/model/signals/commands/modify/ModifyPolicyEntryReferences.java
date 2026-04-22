@@ -147,11 +147,8 @@ public final class ModifyPolicyEntryReferences
                     final PolicyId policyId = PolicyId.of(extractedPolicyId);
                     final Label label = Label.of(jsonObject.getValueOrThrow(JSON_LABEL));
                     final JsonArray referencesArray = jsonObject.getValueOrThrow(JSON_REFERENCES);
-                    final List<EntryReference> references = referencesArray.stream()
-                            .filter(JsonValue::isObject)
-                            .map(JsonValue::asObject)
-                            .map(PoliciesModelFactory::newEntryReference)
-                            .collect(Collectors.toList());
+                    final List<EntryReference> references =
+                            PoliciesModelFactory.parseEntryReferences(referencesArray);
 
                     return of(policyId, label, references, dittoHeaders);
                 });
@@ -195,11 +192,8 @@ public final class ModifyPolicyEntryReferences
 
     @Override
     public ModifyPolicyEntryReferences setEntity(final JsonValue entity) {
-        final List<EntryReference> newReferences = entity.asArray().stream()
-                .filter(JsonValue::isObject)
-                .map(JsonValue::asObject)
-                .map(PoliciesModelFactory::newEntryReference)
-                .collect(Collectors.toList());
+        final List<EntryReference> newReferences =
+                PoliciesModelFactory.parseEntryReferences(entity.asArray());
         return of(policyId, label, newReferences, getDittoHeaders());
     }
 
