@@ -253,7 +253,7 @@ public final class BackgroundSyncStreamTest {
                     .setRevision(5L)
                     .setPolicyImport(PoliciesModelFactory.newPolicyImport(policyIdB,
                             PoliciesModelFactory.newEffectedImportedLabels(
-                                    java.util.Collections.emptyList(), null,
+                                    java.util.Collections.emptyList(),
                                     List.of(policyIdC))))
                     .build();
             reply(SudoRetrievePolicyResponse.of(policyIdA, policyA, DittoHeaders.empty()));
@@ -314,7 +314,7 @@ public final class BackgroundSyncStreamTest {
                     .setRevision(5L)
                     .setPolicyImport(PoliciesModelFactory.newPolicyImport(policyIdB,
                             PoliciesModelFactory.newEffectedImportedLabels(
-                                    java.util.Collections.emptyList(), null,
+                                    java.util.Collections.emptyList(),
                                     List.of(policyIdC, policyIdD))))
                     .build();
             reply(SudoRetrievePolicyResponse.of(policyIdA, policyA, DittoHeaders.empty()));
