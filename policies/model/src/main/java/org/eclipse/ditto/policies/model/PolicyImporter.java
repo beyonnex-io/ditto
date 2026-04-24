@@ -356,15 +356,30 @@ public final class PolicyImporter {
             return ownEntry; // import-referenced entry is not importable
         }
 
-        // Merge resources and namespaces additively
-        final Resources mergedResources = mergeResources(
-                referencedEntry.getResources(), ownEntry.getResources());
+        // For import references, determine what the template allows
+        final Set<AllowedImportAddition> templateAllowed = ref.isImportReference()
+                ? referencedEntry.getAllowedImportAdditions().orElse(Collections.emptySet())
+                : null;
+
+        // Merge resources: for import references, only include own resources if template permits
+        final Resources mergedResources;
+        if (ref.isImportReference() && !templateAllowed.contains(AllowedImportAddition.RESOURCES)) {
+            mergedResources = referencedEntry.getResources(); // template resources only
+        } else {
+            mergedResources = mergeResources(referencedEntry.getResources(), ownEntry.getResources());
+        }
+
         final List<String> mergedNamespaces = mergeNamespaces(
                 referencedEntry.getNamespaces().orElse(null),
                 ownEntry.getNamespaces().orElse(Collections.emptyList()));
 
-        // Merge subjects additively for both local and import references
-        final Subjects mergedSubjects = mergeSubjects(referencedEntry.getSubjects(), ownEntry.getSubjects());
+        // Merge subjects: for import references, only include own subjects if template permits
+        final Subjects mergedSubjects;
+        if (ref.isImportReference() && !templateAllowed.contains(AllowedImportAddition.SUBJECTS)) {
+            mergedSubjects = referencedEntry.getSubjects(); // template subjects only
+        } else {
+            mergedSubjects = mergeSubjects(referencedEntry.getSubjects(), ownEntry.getSubjects());
+        }
 
         // Narrow allowedImportAdditions for import references
         final Set<AllowedImportAddition> narrowedAllowed = ref.isImportReference()

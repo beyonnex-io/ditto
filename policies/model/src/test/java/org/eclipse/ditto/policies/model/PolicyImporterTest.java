@@ -76,7 +76,7 @@ public final class PolicyImporterTest {
     };
 
     private static PolicyEntry policyEntry(final ImportableType importableType) {
-        return policyEntry(importableType, Collections.emptySet());
+        return policyEntry(importableType, ALLOWED_BOTH);
     }
 
     private static PolicyEntry policyEntry(final ImportableType importableType,
@@ -657,6 +657,125 @@ public final class PolicyImporterTest {
                 .collect(java.util.stream.Collectors.toSet());
         assertThat(subjectIds).contains("google:localUser", "google:consumerUser");
     }
+
+    @Test
+    public void testAllowedImportAdditionsRestrictsOwnResources() {
+        // Template: allows only subject additions (NOT resources)
+        final PolicyEntry templateEntry = PoliciesModelFactory.newPolicyEntry(Label.of("DEFAULT"),
+                PoliciesModelFactory.emptySubjects(),
+                Resources.newInstance(Resource.newInstance(TestConstants.Policy.RESOURCE_TYPE,
+                        JsonPointer.of("/"),
+                        EffectedPermissions.newInstance(
+                                Permissions.newInstance(TestConstants.Policy.PERMISSION_READ),
+                                Permissions.none()))),
+                null, ImportableType.IMPLICIT,
+                Collections.singleton(AllowedImportAddition.SUBJECTS), // subjects only, NOT resources
+                null);
+
+        final Policy templatePolicy = PoliciesModelFactory.newPolicyBuilder(IMPORTED_POLICY_ID)
+                .set(templateEntry)
+                .build();
+
+        // Consumer: has own WRITE resource + reference to template
+        final PolicyEntry consumerEntry = PoliciesModelFactory.newPolicyEntry(Label.of("user-access"),
+                Subjects.newInstance(Subject.newInstance(SubjectIssuer.GOOGLE, "subject2")),
+                Resources.newInstance(Resource.newInstance(TestConstants.Policy.RESOURCE_TYPE,
+                        JsonPointer.of("/"),
+                        EffectedPermissions.newInstance(
+                                Permissions.newInstance(TestConstants.Policy.PERMISSION_WRITE),
+                                Permissions.none()))),
+                null, ImportableType.IMPLICIT, null,
+                Collections.singletonList(
+                        PoliciesModelFactory.newEntryReference(IMPORTED_POLICY_ID, Label.of("DEFAULT"))));
+
+        final Policy consumerPolicy = PoliciesModelFactory.newPolicyBuilder(POLICY_ID)
+                .set(consumerEntry)
+                .setPolicyImport(PoliciesModelFactory.newPolicyImport(IMPORTED_POLICY_ID, (EffectedImports) null))
+                .build();
+
+        final Function<PolicyId, CompletionStage<Optional<Policy>>> loader = id -> {
+            if (IMPORTED_POLICY_ID.equals(id)) {
+                return CompletableFuture.completedFuture(Optional.of(templatePolicy));
+            }
+            return CompletableFuture.completedFuture(Optional.empty());
+        };
+
+        final Policy resolved = consumerPolicy.withResolvedImports(loader).toCompletableFuture().join();
+
+        final PolicyEntry resolvedConsumer = resolved.getEntryFor(Label.of("user-access"))
+                .orElseThrow(() -> new AssertionError("user-access entry not found"));
+
+        // Template allows subjects → subject2 should be present
+        final Set<String> subjectIds = StreamSupport.stream(resolvedConsumer.getSubjects().spliterator(), false)
+                .map(s -> s.getId().toString())
+                .collect(java.util.stream.Collectors.toSet());
+        assertThat(subjectIds).contains("google:subject2");
+
+        // Template allows subjects only, NOT resources → consumer's own WRITE should be stripped
+        // Only the template's READ resource should remain
+        final ResourceKey rootResourceKey = ResourceKey.newInstance(TestConstants.Policy.RESOURCE_TYPE,
+                JsonPointer.of("/"));
+        assertThat(resolvedConsumer.getResources().getResource(rootResourceKey)).isPresent();
+        final EffectedPermissions effectivePerms =
+                resolvedConsumer.getResources().getResource(rootResourceKey).get().getEffectedPermissions();
+        assertThat(effectivePerms.getGrantedPermissions())
+                .contains(TestConstants.Policy.PERMISSION_READ);
+        assertThat(effectivePerms.getGrantedPermissions())
+                .doesNotContain(TestConstants.Policy.PERMISSION_WRITE);
+    }
+
+    @Test
+    public void testAllowedImportAdditionsRestrictsOwnSubjects() {
+        // Template: allows only resource additions (NOT subjects)
+        final PolicyEntry templateEntry = PoliciesModelFactory.newPolicyEntry(Label.of("DEFAULT"),
+                Subjects.newInstance(Subject.newInstance(SubjectIssuer.GOOGLE, "templateUser")),
+                Resources.newInstance(Resource.newInstance(TestConstants.Policy.RESOURCE_TYPE,
+                        JsonPointer.of("/"),
+                        EffectedPermissions.newInstance(
+                                Permissions.newInstance(TestConstants.Policy.PERMISSION_READ),
+                                Permissions.none()))),
+                null, ImportableType.IMPLICIT,
+                Collections.singleton(AllowedImportAddition.RESOURCES), // resources only, NOT subjects
+                null);
+
+        final Policy templatePolicy = PoliciesModelFactory.newPolicyBuilder(IMPORTED_POLICY_ID)
+                .set(templateEntry)
+                .build();
+
+        // Consumer: has own subject + reference to template
+        final PolicyEntry consumerEntry = PoliciesModelFactory.newPolicyEntry(Label.of("consumer"),
+                Subjects.newInstance(Subject.newInstance(SubjectIssuer.GOOGLE, "ownUser")),
+                PoliciesModelFactory.emptyResources(),
+                null, ImportableType.IMPLICIT, null,
+                Collections.singletonList(
+                        PoliciesModelFactory.newEntryReference(IMPORTED_POLICY_ID, Label.of("DEFAULT"))));
+
+        final Policy consumerPolicy = PoliciesModelFactory.newPolicyBuilder(POLICY_ID)
+                .set(consumerEntry)
+                .setPolicyImport(PoliciesModelFactory.newPolicyImport(IMPORTED_POLICY_ID, (EffectedImports) null))
+                .build();
+
+        final Function<PolicyId, CompletionStage<Optional<Policy>>> loader = id -> {
+            if (IMPORTED_POLICY_ID.equals(id)) {
+                return CompletableFuture.completedFuture(Optional.of(templatePolicy));
+            }
+            return CompletableFuture.completedFuture(Optional.empty());
+        };
+
+        final Policy resolved = consumerPolicy.withResolvedImports(loader).toCompletableFuture().join();
+
+        final PolicyEntry resolvedConsumer = resolved.getEntryFor(Label.of("consumer"))
+                .orElseThrow(() -> new AssertionError("consumer entry not found"));
+
+        // Template allows resources only, NOT subjects → consumer's own subject should be stripped
+        // Only template's templateUser should remain
+        final Set<String> subjectIds = StreamSupport.stream(resolvedConsumer.getSubjects().spliterator(), false)
+                .map(s -> s.getId().toString())
+                .collect(java.util.stream.Collectors.toSet());
+        assertThat(subjectIds).contains("google:templateUser");
+        assertThat(subjectIds).doesNotContain("google:ownUser");
+    }
+
 
     @Test
     public void testResolveImportReferenceToImportableNeverIsSkipped() {
