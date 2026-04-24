@@ -776,6 +776,74 @@ public final class PolicyImporterTest {
         assertThat(subjectIds).doesNotContain("google:ownUser");
     }
 
+    @Test
+    public void testMultipleImportReferencesFromDifferentPolicies() {
+        final PolicyId templateAId = PolicyId.of("com.example", "templateA");
+        final PolicyId templateBId = PolicyId.of("com.example", "templateB");
+        final PolicyId importingId = PolicyId.of("com.example", "importer");
+
+        final ResourceKey attrResource = ResourceKey.newInstance("thing", JsonPointer.of("attributes"));
+        final ResourceKey featResource = ResourceKey.newInstance("thing", JsonPointer.of("features"));
+
+        // Template A: ATTR_ACCESS entry with thing:/attributes READ
+        final PolicyEntry attrEntry = PoliciesModelFactory.newPolicyEntry(Label.of("ATTR_ACCESS"),
+                PoliciesModelFactory.emptySubjects(),
+                Resources.newInstance(Resource.newInstance("thing", JsonPointer.of("attributes"),
+                        EffectedPermissions.newInstance(
+                                Permissions.newInstance("READ"), Permissions.none()))),
+                null, ImportableType.IMPLICIT,
+                Collections.singleton(AllowedImportAddition.SUBJECTS), null);
+        final Policy templateA = PoliciesModelFactory.newPolicyBuilder(templateAId).set(attrEntry).build();
+
+        // Template B: FEAT_ACCESS entry with thing:/features READ
+        final PolicyEntry featEntry = PoliciesModelFactory.newPolicyEntry(Label.of("FEAT_ACCESS"),
+                PoliciesModelFactory.emptySubjects(),
+                Resources.newInstance(Resource.newInstance("thing", JsonPointer.of("features"),
+                        EffectedPermissions.newInstance(
+                                Permissions.newInstance("READ"), Permissions.none()))),
+                null, ImportableType.IMPLICIT,
+                Collections.singleton(AllowedImportAddition.SUBJECTS), null);
+        final Policy templateB = PoliciesModelFactory.newPolicyBuilder(templateBId).set(featEntry).build();
+
+        // Importing policy: combined-access references both templates
+        final PolicyEntry combinedEntry = PoliciesModelFactory.newPolicyEntry(Label.of("combined-access"),
+                Subjects.newInstance(Subject.newInstance(SubjectIssuer.GOOGLE, "subject2")),
+                PoliciesModelFactory.emptyResources(),
+                null, ImportableType.IMPLICIT, null,
+                Arrays.asList(
+                        PoliciesModelFactory.newEntryReference(templateAId, Label.of("ATTR_ACCESS")),
+                        PoliciesModelFactory.newEntryReference(templateBId, Label.of("FEAT_ACCESS"))));
+
+        final Policy importingPolicy = PoliciesModelFactory.newPolicyBuilder(importingId)
+                .set(combinedEntry)
+                .setPolicyImport(PoliciesModelFactory.newPolicyImport(templateAId, (EffectedImports) null))
+                .setPolicyImport(PoliciesModelFactory.newPolicyImport(templateBId, (EffectedImports) null))
+                .build();
+
+        final Function<PolicyId, CompletionStage<Optional<Policy>>> loader = id -> {
+            if (templateAId.equals(id)) {
+                return CompletableFuture.completedFuture(Optional.of(templateA));
+            } else if (templateBId.equals(id)) {
+                return CompletableFuture.completedFuture(Optional.of(templateB));
+            }
+            return CompletableFuture.completedFuture(Optional.empty());
+        };
+
+        final Policy resolved = importingPolicy.withResolvedImports(loader).toCompletableFuture().join();
+
+        final PolicyEntry resolvedCombined = resolved.getEntryFor(Label.of("combined-access"))
+                .orElseThrow(() -> new AssertionError("combined-access entry not found"));
+
+        // Both templates' resources should be present
+        assertThat(resolvedCombined.getResources().getResource(attrResource)).isPresent();
+        assertThat(resolvedCombined.getResources().getResource(featResource)).isPresent();
+
+        // subject2 should be present (allowed by both templates)
+        final Set<String> subjectIds = StreamSupport.stream(resolvedCombined.getSubjects().spliterator(), false)
+                .map(s -> s.getId().toString())
+                .collect(java.util.stream.Collectors.toSet());
+        assertThat(subjectIds).contains("google:subject2");
+    }
 
     @Test
     public void testResolveImportReferenceToImportableNeverIsSkipped() {

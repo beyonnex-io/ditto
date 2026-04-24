@@ -319,97 +319,97 @@ public final class PolicyImporter {
         for (final PolicyEntry ownEntry : importingPolicy) {
             final List<EntryReference> refs = ownEntry.getReferences();
             if (!refs.isEmpty()) {
-                PolicyEntry currentEntry = ownEntry;
-                for (final EntryReference ref : refs) {
-                    currentEntry = resolveOneReference(importingPolicy, resolvedEntries, currentEntry, ref);
-                }
-                // Replace the own entry in the result set with the fully merged entry
+                final PolicyEntry merged = resolveAllReferences(importingPolicy, resolvedEntries, ownEntry);
                 result.remove(ownEntry);
-                result.add(currentEntry);
+                result.add(merged);
             }
         }
         return Collections.unmodifiableSet(result);
     }
 
-    private static PolicyEntry resolveOneReference(final Policy importingPolicy,
-            final Set<PolicyEntry> resolvedEntries, final PolicyEntry ownEntry, final EntryReference ref) {
+    /**
+     * Resolves all references on a single entry. Resources and subjects from each referenced
+     * entry are accumulated independently, then the own entry's additions are merged in only
+     * if the strictest {@code allowedImportAdditions} permits them.
+     */
+    private static PolicyEntry resolveAllReferences(final Policy importingPolicy,
+            final Set<PolicyEntry> resolvedEntries, final PolicyEntry ownEntry) {
 
-        final Optional<PolicyEntry> referencedEntryOpt;
-        if (ref.isImportReference()) {
-            // Import reference: look up in resolved (label-prefixed) imported entries
-            final Label referencedLabel = PoliciesModelFactory.newImportedLabel(
-                    ref.getImportedPolicyId().orElseThrow(NoSuchElementException::new),
-                    ref.getEntryLabel());
-            referencedEntryOpt = resolvedEntries.stream()
-                    .filter(e -> e.getLabel().equals(referencedLabel))
-                    .findFirst();
-        } else {
-            // Local reference: look up directly in the importing policy by label
-            referencedEntryOpt = importingPolicy.getEntryFor(ref.getEntryLabel());
+        Resources accumulatedResources = PoliciesModelFactory.emptyResources();
+        Subjects accumulatedSubjects = PoliciesModelFactory.emptySubjects();
+        List<String> accumulatedNamespaces = Collections.emptyList();
+        // Track the strictest allowedImportAdditions across all import references
+        Set<AllowedImportAddition> effectiveAllowed = null; // null = no import refs yet
+
+        for (final EntryReference ref : ownEntry.getReferences()) {
+            final Optional<PolicyEntry> referencedEntryOpt = lookupReference(importingPolicy, resolvedEntries, ref);
+            if (!referencedEntryOpt.isPresent()) {
+                continue;
+            }
+            final PolicyEntry referencedEntry = referencedEntryOpt.get();
+            if (ref.isImportReference() && referencedEntry.getImportableType() == ImportableType.NEVER) {
+                continue;
+            }
+
+            // Accumulate resources and namespaces from the referenced entry
+            accumulatedResources = mergeResources(accumulatedResources, referencedEntry.getResources());
+            accumulatedNamespaces = mergeNamespaces(
+                    accumulatedNamespaces.isEmpty() ? null : accumulatedNamespaces,
+                    referencedEntry.getNamespaces().orElse(Collections.emptyList()));
+            accumulatedSubjects = mergeSubjects(accumulatedSubjects, referencedEntry.getSubjects());
+
+            // For import references, narrow the effective allowedImportAdditions
+            if (ref.isImportReference()) {
+                final Set<AllowedImportAddition> templateAllowed =
+                        referencedEntry.getAllowedImportAdditions().orElse(Collections.emptySet());
+                if (effectiveAllowed == null) {
+                    effectiveAllowed = new LinkedHashSet<>(templateAllowed);
+                } else {
+                    effectiveAllowed.retainAll(templateAllowed);
+                }
+            }
         }
 
-        if (!referencedEntryOpt.isPresent()) {
-            return ownEntry; // referenced entry not found, skip
-        }
-        final PolicyEntry referencedEntry = referencedEntryOpt.get();
-        if (ref.isImportReference() && referencedEntry.getImportableType() == ImportableType.NEVER) {
-            return ownEntry; // import-referenced entry is not importable
-        }
+        // Determine if the own entry's additions are permitted
+        final boolean hasImportRefs = effectiveAllowed != null;
+        final boolean resourcesAllowed = !hasImportRefs ||
+                effectiveAllowed.contains(AllowedImportAddition.RESOURCES);
+        final boolean subjectsAllowed = !hasImportRefs ||
+                effectiveAllowed.contains(AllowedImportAddition.SUBJECTS);
 
-        // For import references, determine what the template allows
-        final Set<AllowedImportAddition> templateAllowed = ref.isImportReference()
-                ? referencedEntry.getAllowedImportAdditions().orElse(Collections.emptySet())
-                : null;
-
-        // Merge resources: for import references, only include own resources if template permits
-        final Resources mergedResources;
-        if (ref.isImportReference() && !templateAllowed.contains(AllowedImportAddition.RESOURCES)) {
-            mergedResources = referencedEntry.getResources(); // template resources only
-        } else {
-            mergedResources = mergeResources(referencedEntry.getResources(), ownEntry.getResources());
-        }
-
-        final List<String> mergedNamespaces = mergeNamespaces(
-                referencedEntry.getNamespaces().orElse(null),
+        // Merge own entry's resources/subjects only if allowed
+        final Resources finalResources = resourcesAllowed
+                ? mergeResources(accumulatedResources, ownEntry.getResources())
+                : accumulatedResources;
+        final Subjects finalSubjects = subjectsAllowed
+                ? mergeSubjects(accumulatedSubjects, ownEntry.getSubjects())
+                : accumulatedSubjects;
+        final List<String> finalNamespaces = mergeNamespaces(
+                accumulatedNamespaces.isEmpty() ? null : accumulatedNamespaces,
                 ownEntry.getNamespaces().orElse(Collections.emptyList()));
-
-        // Merge subjects: for import references, only include own subjects if template permits
-        final Subjects mergedSubjects;
-        if (ref.isImportReference() && !templateAllowed.contains(AllowedImportAddition.SUBJECTS)) {
-            mergedSubjects = referencedEntry.getSubjects(); // template subjects only
-        } else {
-            mergedSubjects = mergeSubjects(referencedEntry.getSubjects(), ownEntry.getSubjects());
-        }
-
-        // Narrow allowedImportAdditions for import references
-        final Set<AllowedImportAddition> narrowedAllowed = ref.isImportReference()
-                ? narrowAllowedAdditions(referencedEntry, ownEntry)
-                : ownEntry.getAllowedImportAdditions().orElse(null);
 
         return PoliciesModelFactory.newPolicyEntry(
                 ownEntry.getLabel(),
-                mergedSubjects,
-                mergedResources,
-                mergedNamespaces.isEmpty() ? null : mergedNamespaces,
+                finalSubjects,
+                finalResources,
+                finalNamespaces.isEmpty() ? null : finalNamespaces,
                 ownEntry.getImportableType(),
-                narrowedAllowed,
+                effectiveAllowed,
                 ownEntry.getReferences().isEmpty() ? null : ownEntry.getReferences()
         );
     }
 
-    @Nullable
-    private static Set<AllowedImportAddition> narrowAllowedAdditions(final PolicyEntry referenced,
-            final PolicyEntry own) {
-        final Set<AllowedImportAddition> referencedAllowed = referenced.getAllowedImportAdditions().orElse(null);
-        final Set<AllowedImportAddition> ownAllowed = own.getAllowedImportAdditions().orElse(null);
-        if (referencedAllowed != null && ownAllowed != null) {
-            final Set<AllowedImportAddition> intersection = new LinkedHashSet<>(referencedAllowed);
-            intersection.retainAll(ownAllowed);
-            return intersection;
-        } else if (ownAllowed != null) {
-            return ownAllowed;
+    private static Optional<PolicyEntry> lookupReference(final Policy importingPolicy,
+            final Set<PolicyEntry> resolvedEntries, final EntryReference ref) {
+        if (ref.isImportReference()) {
+            final Label referencedLabel = PoliciesModelFactory.newImportedLabel(
+                    ref.getImportedPolicyId().orElseThrow(NoSuchElementException::new),
+                    ref.getEntryLabel());
+            return resolvedEntries.stream()
+                    .filter(e -> e.getLabel().equals(referencedLabel))
+                    .findFirst();
         } else {
-            return referencedAllowed;
+            return importingPolicy.getEntryFor(ref.getEntryLabel());
         }
     }
 
