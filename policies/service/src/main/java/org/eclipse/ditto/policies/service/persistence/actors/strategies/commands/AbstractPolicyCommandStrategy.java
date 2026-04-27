@@ -435,7 +435,8 @@ abstract class AbstractPolicyCommandStrategy<C extends Command<C>, E extends Pol
                             command));
                 }
                 if (ref.isImportReference()) {
-                    final PolicyId refImport = ref.getImportedPolicyId().orElseThrow();
+                    final PolicyId refImport = ref.getImportedPolicyId().orElseThrow(() ->
+                            new IllegalStateException("Import reference without imported policy ID"));
                     if (!importIds.contains(refImport)) {
                         return Optional.of(ResultFactory.newErrorResult(
                                 policyEntryReferenceInvalid(policyId, entry.getLabel(),

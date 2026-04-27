@@ -17,12 +17,12 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
-import java.util.NoSuchElementException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -305,7 +305,7 @@ public final class PolicyImporter {
      * <p>
      * For import references, the referenced entry is looked up in the resolved set (label-prefixed imported entries).
      * For local references, the referenced entry is looked up directly in the importing policy.
-     * In both cases, resources, namespaces, and (for local references) subjects are additively merged.
+     * In both cases, resources, namespaces, and subjects are additively merged.
      *
      * @param importingPolicy the policy whose entries may contain references.
      * @param resolvedEntries the full set of resolved entries (own + imported, with prefixed labels).
@@ -314,12 +314,32 @@ public final class PolicyImporter {
      */
     public static Set<PolicyEntry> resolveReferences(final Policy importingPolicy,
             final Set<PolicyEntry> resolvedEntries) {
+        return resolveReferences(importingPolicy, resolvedEntries, (entry, ref) -> { /* no-op */ });
+    }
+
+    /**
+     * Variant of {@link #resolveReferences(Policy, Set)} that invokes {@code onMissingReference} when a
+     * reference cannot be resolved (the referenced entry is absent from the resolved set or from the
+     * importing policy). The callback receives the entry holding the reference and the reference itself,
+     * allowing callers in higher layers (e.g. enforcement) to log a diagnostic without the model module
+     * taking on a logging dependency.
+     *
+     * @param importingPolicy the policy whose entries may contain references.
+     * @param resolvedEntries the full set of resolved entries (own + imported, with prefixed labels).
+     * @param onMissingReference invoked once per reference that fails to resolve; never null.
+     * @return a new set with references resolved (merged with referenced entry content).
+     * @since 3.9.0
+     */
+    public static Set<PolicyEntry> resolveReferences(final Policy importingPolicy,
+            final Set<PolicyEntry> resolvedEntries,
+            final BiConsumer<PolicyEntry, EntryReference> onMissingReference) {
 
         final Set<PolicyEntry> result = new LinkedHashSet<>(resolvedEntries);
         for (final PolicyEntry ownEntry : importingPolicy) {
             final List<EntryReference> refs = ownEntry.getReferences();
             if (!refs.isEmpty()) {
-                final PolicyEntry merged = resolveAllReferences(importingPolicy, resolvedEntries, ownEntry);
+                final PolicyEntry merged = resolveAllReferences(importingPolicy, resolvedEntries, ownEntry,
+                        onMissingReference);
                 result.remove(ownEntry);
                 result.add(merged);
             }
@@ -333,7 +353,8 @@ public final class PolicyImporter {
      * if the strictest {@code allowedImportAdditions} permits them.
      */
     private static PolicyEntry resolveAllReferences(final Policy importingPolicy,
-            final Set<PolicyEntry> resolvedEntries, final PolicyEntry ownEntry) {
+            final Set<PolicyEntry> resolvedEntries, final PolicyEntry ownEntry,
+            final BiConsumer<PolicyEntry, EntryReference> onMissingReference) {
 
         Resources accumulatedResources = PoliciesModelFactory.emptyResources();
         Subjects accumulatedSubjects = PoliciesModelFactory.emptySubjects();
@@ -344,6 +365,7 @@ public final class PolicyImporter {
         for (final EntryReference ref : ownEntry.getReferences()) {
             final Optional<PolicyEntry> referencedEntryOpt = lookupReference(importingPolicy, resolvedEntries, ref);
             if (!referencedEntryOpt.isPresent()) {
+                onMissingReference.accept(ownEntry, ref);
                 continue;
             }
             final PolicyEntry referencedEntry = referencedEntryOpt.get();
@@ -403,7 +425,8 @@ public final class PolicyImporter {
             final Set<PolicyEntry> resolvedEntries, final EntryReference ref) {
         if (ref.isImportReference()) {
             final Label referencedLabel = PoliciesModelFactory.newImportedLabel(
-                    ref.getImportedPolicyId().orElseThrow(NoSuchElementException::new),
+                    ref.getImportedPolicyId().orElseThrow(() ->
+                            new IllegalStateException("Import reference without imported policy ID")),
                     ref.getEntryLabel());
             return resolvedEntries.stream()
                     .filter(e -> e.getLabel().equals(referencedLabel))

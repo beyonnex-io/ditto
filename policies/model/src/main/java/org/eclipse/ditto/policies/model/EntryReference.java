@@ -27,10 +27,16 @@ import org.eclipse.ditto.json.JsonObject;
  * A reference from a {@link PolicyEntry} to another entry. The reference can point to either:
  * <ul>
  *   <li>An entry in an imported policy ({@code "import"} + {@code "entry"} fields present) — the referencing entry
- *       inherits resources and namespaces from the referenced entry.</li>
+ *       inherits subjects, resources, and namespaces from the referenced entry.</li>
  *   <li>A local entry within the same policy ({@code "entry"} field only) — the referencing entry inherits
  *       subjects, resources, and namespaces from the referenced local entry.</li>
  * </ul>
+ * <p>
+ * For import references, the referenced entry's {@code allowedImportAdditions} acts as a runtime filter on the
+ * referencing entry's <em>own</em> subjects/resources additions: at resolution time, own additions that are not
+ * permitted by the strictest {@code allowedImportAdditions} across all import references on the entry are silently
+ * stripped. There is no write-time rejection — persisted state may contain additions that are not effective at
+ * runtime. Local references are not subject to this filter.
  *
  * @since 3.9.0
  */

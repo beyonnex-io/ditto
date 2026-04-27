@@ -14,6 +14,10 @@ description: |-
   via `references`. If omitted or empty, no additions are allowed. This default ensures
   that existing policies cannot be extended with additional subjects, resources, or namespaces
   unless the policy author explicitly opts in.
+
+  This field is enforced as a runtime filter, not as a write-time policy contract: a referencing
+  entry that declares own subjects/resources not permitted here can still be persisted, but the
+  disallowed own additions are silently stripped at enforcement time.
   * `subjects` — allows importing policies to add additional subjects to this entry
   * `resources` — allows importing policies to add additional resources to this entry
   * `namespaces` — allows importing policies to add additional namespace patterns to this entry

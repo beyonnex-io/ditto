@@ -345,6 +345,13 @@ entries are permitted to merge into this entry via `references`. Valid values ar
 policies that were created before this feature cannot be extended with additional subjects or resources through
 `references` unless the policy author explicitly opts in by setting `allowedImportAdditions`.
 
+`allowedImportAdditions` is enforced as a **runtime filter** on the referencing entry's own additions, not as a
+write-time policy contract. If a referencing entry declares own subjects/resources that the strictest
+`allowedImportAdditions` across its import references does not permit, those own additions are silently stripped at
+enforcement time — the write itself is not rejected. This is intentional: the effective permissions of an entry
+depend on the live state of the referenced template, which can change over time, so the authoritative check happens
+during enforcement.
+
 Example of a policy specifying different types of `importable` entries and allowed additions:
 ```json
 {
@@ -427,17 +434,21 @@ and the referencing entry defines its own local subjects (the "who"), while reso
 additively merged from the referenced entries.
 
 The merge behavior is:
-* **Subjects** are defined locally on the entry itself — they are the entry's own subjects.
-  Subjects from referenced entries are also merged additively.
+* **Subjects** from referenced entries are merged additively with the entry's own subjects. This applies to both
+  import references and local references. Subjects sharing the same subject ID are de-duplicated, with the
+  referenced entry's instance winning.
 * **Resources** from the referenced entries are merged additively. For overlapping resource paths, permissions are
   merged as a union of grants and revokes. Template revokes are always preserved and cannot be removed by the
   local entry.
 * **Namespaces** from the referenced entries are merged additively with any locally defined namespaces.
 
-The referenced entry must explicitly allow these additions via its `allowedImportAdditions`
-field. If the entry does not allow subject additions, the local subjects will be rejected. Likewise for `resources`
-and `namespaces`.  
-This gives the template policy author full control over what referencing entries can extend.
+For import references, the referenced template entry's `allowedImportAdditions` acts as a runtime filter on the
+referencing entry's <em>own</em> subjects/resources additions: at enforcement time, own additions that are not
+permitted by the strictest `allowedImportAdditions` across all import references on the entry are silently
+stripped. The write itself is not rejected — persisted state may contain additions that are not effective at
+runtime. Local references are not subject to this filter, since the referenced entry is in the same trust domain.
+This gives the template policy author full control over what referencing entries can extend across policy
+boundaries, while keeping the effective check anchored to the live state of the referenced template.
 
 #### Example: role-based access template for a power plant
 

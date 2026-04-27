@@ -16,6 +16,8 @@ import static org.eclipse.ditto.base.model.common.ConditionChecker.checkNotNull;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
@@ -28,6 +30,7 @@ import org.eclipse.ditto.internal.utils.persistentactors.results.Result;
 import org.eclipse.ditto.internal.utils.persistentactors.results.ResultFactory;
 import org.eclipse.ditto.policies.model.EntryReference;
 import org.eclipse.ditto.policies.model.Label;
+import org.eclipse.ditto.policies.model.PoliciesModelFactory;
 import org.eclipse.ditto.policies.model.Policy;
 import org.eclipse.ditto.policies.model.PolicyEntry;
 import org.eclipse.ditto.policies.model.PolicyId;
@@ -66,33 +69,27 @@ final class ModifyPolicyEntryReferencesStrategy
                     policyEntryNotFound(policyId, label, dittoHeaders), command);
         }
 
-        // Validate references
-        final java.util.Set<String> seenRefs = new java.util.LinkedHashSet<>();
-        for (final EntryReference ref : references) {
-            final String refKey = ref.getImportedPolicyId().map(id -> id + ":").orElse("") +
-                    ref.getEntryLabel();
-            if (!seenRefs.add(refKey)) {
-                return ResultFactory.newErrorResult(
-                        policyEntryReferenceInvalid(policyId, label,
-                                "Duplicate reference to entry '" + ref.getEntryLabel() + "'.",
-                                dittoHeaders),
-                        command);
-            }
-            if (ref.isLocalReference() && ref.getEntryLabel().equals(label)) {
-                return ResultFactory.newErrorResult(
-                        policyEntryReferenceInvalid(policyId, label,
-                                "Entry must not reference itself.",
-                                dittoHeaders),
-                        command);
-            }
-            if (ref.isLocalReference() && nonNullPolicy.getEntryFor(ref.getEntryLabel()).isEmpty()) {
-                return ResultFactory.newErrorResult(
-                        policyEntryReferenceInvalid(policyId, label,
-                                "Local reference targets entry '" + ref.getEntryLabel() +
-                                        "' which does not exist in the policy.",
-                                dittoHeaders),
-                        command);
-            }
+        // Build the post-modification entry list and delegate to the shared integrity validator.
+        // The validator covers: duplicate refs, self-references, missing local-ref targets, and
+        // import-refs pointing at policies that are not declared in the importing policy's imports.
+        final List<PolicyEntry> entriesAfterModification = StreamSupport
+                .stream(nonNullPolicy.spliterator(), false)
+                .map(entry -> entry.getLabel().equals(label)
+                        ? PoliciesModelFactory.newPolicyEntry(
+                                entry.getLabel(),
+                                entry.getSubjects(),
+                                entry.getResources(),
+                                entry.getNamespaces().orElse(null),
+                                entry.getImportableType(),
+                                entry.getAllowedImportAdditions().orElse(null),
+                                references.isEmpty() ? null : references)
+                        : entry)
+                .collect(Collectors.toList());
+
+        final Optional<Result<PolicyEvent<?>>> integrityError = validateReferencesIntegrity(
+                policyId, entriesAfterModification, nonNullPolicy, dittoHeaders, command);
+        if (integrityError.isPresent()) {
+            return integrityError.get();
         }
 
         final PolicyEntryReferencesModified event =

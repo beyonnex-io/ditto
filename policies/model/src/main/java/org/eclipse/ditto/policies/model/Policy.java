@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
@@ -465,6 +466,23 @@ public interface Policy extends Iterable<PolicyEntry>, Entity<PolicyRevision> {
 
     default CompletionStage<Policy> withResolvedImports(
             final Function<PolicyId, CompletionStage<Optional<Policy>>> policyResolver) {
+        return withResolvedImports(policyResolver, (entry, ref) -> { /* no-op */ });
+    }
+
+    /**
+     * Variant of {@link #withResolvedImports(Function)} that invokes {@code onMissingReference} once per
+     * entry reference that cannot be resolved at resolution time. Higher layers (e.g. enforcement) can
+     * pass a logging callback to surface the silent skip without the model module taking a logging
+     * dependency.
+     *
+     * @param policyResolver a function to load imported policies.
+     * @param onMissingReference invoked once per missing reference; never null.
+     * @return a policy with imports merged and references resolved.
+     * @since 3.9.0
+     */
+    default CompletionStage<Policy> withResolvedImports(
+            final Function<PolicyId, CompletionStage<Optional<Policy>>> policyResolver,
+            final BiConsumer<PolicyEntry, EntryReference> onMissingReference) {
         final CompletionStage<Policy> result;
         final PolicyImports imports = getPolicyImports();
         if (!imports.isEmpty()) {
@@ -472,7 +490,7 @@ public interface Policy extends Iterable<PolicyEntry>, Entity<PolicyRevision> {
             result = PolicyImporter.mergeImportedPolicyEntries(this, policyResolver)
                     .thenApply(mergedEntries -> {
                         final Set<PolicyEntry> resolved =
-                                PolicyImporter.resolveReferences(self, mergedEntries);
+                                PolicyImporter.resolveReferences(self, mergedEntries, onMissingReference);
                         return self.toBuilder().setAll(resolved).build();
                     });
         } else {
@@ -482,7 +500,7 @@ public interface Policy extends Iterable<PolicyEntry>, Entity<PolicyRevision> {
                     .anyMatch(entry -> !entry.getReferences().isEmpty());
             if (hasReferences) {
                 final Set<PolicyEntry> resolved =
-                        PolicyImporter.resolveReferences(this, this.getEntriesSet());
+                        PolicyImporter.resolveReferences(this, this.getEntriesSet(), onMissingReference);
                 result = CompletableFuture.completedFuture(
                         this.toBuilder().setAll(resolved).build());
             } else {
